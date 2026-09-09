@@ -4,66 +4,75 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 /**
- * 탭 — ADR-013.
+ * 주 내비게이션 — 네 목적지(ADR-020·ADR-021).
  *
- * 하나로 이어 붙인 알약 대신 밑줄 방식을 쓴다. 이어 붙이면 다섯 칸이 한 덩어리로
- * 읽혀 지금 어디에 있는지가 색으로만 구분되고, 폭을 균등 분배하느라 글자 사이가
- * 제품 폭에 따라 들쭉날쭉해진다. 밑줄은 각 항목을 독립된 목적지로 보여 준다.
+ * **모든 폭에서 상단에 둔다.** 전에는 모바일에서 하단에 고정했는데,
+ * 하단은 이 제품에서 기록 입력 프롬프트의 자리다(재검수 v2 §9).
+ * 둘을 함께 고정하면 도구 영역이 두 줄이 되고, 키보드까지 올라오면 본문이 사라진다.
+ *
+ * 활성 상태는 색만이 아니라 굵기·둥근 선택 면·aria-current 로 함께 알린다.
  */
-const LINKS = [
+export const DESTINATIONS = [
   { href: '/', label: '달력' },
-  { href: '/dashboard', label: '대시보드' },
-  { href: '/tags', label: '태그' },
-  { href: '/search', label: '검색' },
-  { href: '/etc', label: '기타' },
+  { href: '/dashboard', label: '분석' },
+  { href: '/search', label: '내역' },
+  { href: '/settings', label: '설정' },
 ];
+
+function isActive(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname.startsWith(href);
+}
 
 export function Nav() {
   const pathname = usePathname();
   return (
-    <header className="border-b border-[var(--line)]">
-      <Link href="/" className="flex w-fit items-center gap-2.5 pb-3">
-        <span
-          aria-hidden
-          className="grid size-11 place-items-center rounded-[14px] bg-[var(--primary)] text-[var(--primary-ink)] shadow-[var(--shadow-sm)]"
-        >
-          <svg viewBox="0 0 24 24" className="size-6" fill="none">
-            <rect x="3.5" y="5" width="17" height="15" rx="4.5" stroke="currentColor" strokeWidth="1.7" />
-            <path d="M8 3.4v3.2M16 3.4v3.2M3.5 10h17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-            <circle cx="12" cy="15" r="1.9" fill="currentColor" />
-          </svg>
-        </span>
-        <span className="text-[26px] font-semibold tracking-tight">한줄 가계부</span>
-      </Link>
+    <header className="border-b border-[var(--line)] bg-[var(--surface)]">
+      <div className="mx-auto flex w-full max-w-[1056px] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
+        <Link href="/" className="flex w-fit shrink-0 items-center gap-2">
+          <span
+            aria-hidden
+            className="grid size-8 place-items-center rounded-[var(--r-control)] bg-[var(--primary)] text-[var(--primary-ink)]"
+          >
+            <CalendarIcon />
+          </span>
+          <span className="text-[20px] font-bold tracking-tight sm:text-[21px]">한줄 가계부</span>
+        </Link>
 
-      <nav aria-label="탭" className="-mb-px flex items-center gap-0.5 overflow-x-auto">
-        {LINKS.map((l) => {
-          const active = l.href === '/' ? pathname === '/' : pathname.startsWith(l.href);
-          return (
-            <Link
-              key={l.href}
-              href={l.href}
-              aria-current={active ? 'page' : undefined}
-              className={[
-                'relative whitespace-nowrap rounded-t-[10px] px-4 py-2.5 text-sm transition-colors',
-                active
-                  ? 'font-medium text-[var(--primary)]'
-                  : 'text-[var(--ink-3)] hover:bg-[var(--surface)] hover:text-[var(--ink)]',
-              ].join(' ')}
-            >
-              {l.label}
-              {active ? (
-                /* bottom-0 이다. -bottom-px 로 두면 밑줄이 컨테이너를 1px 넘겨
-                   overflow-x-auto 가 세로 스크롤바까지 만든다(실제로 겪음) */
-                <span
-                  aria-hidden
-                  className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-[var(--primary)]"
-                />
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
+        {/* 둥근 선택 면으로 지금 있는 곳을 알린다. 밑줄만 쓰지 않는다(§3.3). */}
+        <nav aria-label="주 메뉴" className="-mx-1 flex items-center gap-1 overflow-x-auto px-1">
+          {DESTINATIONS.map((d) => {
+            const active = isActive(pathname, d.href);
+            return (
+              <Link
+                key={d.href}
+                href={d.href}
+                aria-current={active ? 'page' : undefined}
+                className={[
+                  'flex h-10 items-center whitespace-nowrap rounded-[var(--r-pill)] px-4 text-[15px] transition-colors',
+                  active
+                    ? 'bg-[var(--accent-container)] font-semibold text-[var(--on-accent-container)]'
+                    : 'text-[var(--ink-2)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
+                ].join(' ')}
+              >
+                {d.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </header>
   );
 }
+
+/* ------------------------------------------------------------------ 아이콘 */
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <rect x="3.5" y="5" width="17" height="15" rx="3" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M8 3.4v3.2M16 3.4v3.2M3.5 10h17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+

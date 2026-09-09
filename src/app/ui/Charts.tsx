@@ -4,44 +4,33 @@ import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
-  Cell,
-  Pie,
-  PieChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatWon, Money } from './atoms';
 
 /**
- * 차트 — ADR-005. 그리는 도구만 가져오고 표현은 우리 토큰으로 통일한다.
- * 색의 원천은 globals.css 의 --cat-* / --dir-* 이다. 여기서 색을 새로 만들지 않는다.
+ * 차트 — ADR-020, 검수 §14.
  *
  * 함정: SVG 의 fill 은 CSS 속성이 아니라 **XML 속성**이라 var() 를 해석하지 못한다.
  * 그래서 토큰을 문자열로 넘기기 전에 실행 시점에 실제 색으로 풀어 준다.
- * 이것을 하지 않으면 축과 범례는 나오는데 도형만 보이지 않는다.
+ *
+ * 색만으로 계열을 구분하지 않는다. 이름과 금액을 글자로 함께 둔다.
+ * hover 로만 값을 보게 하지 않는다 — 표가 늘 함께 있다.
  */
+const TOKEN_KEYS = ['--dir-expense', '--dir-income', '--chart-1', '--ink-3', '--line', '--surface'];
 
-const TOKEN_KEYS = [
-  ...Array.from({ length: 10 }, (_, i) => `--cat-${i + 1}`),
-  '--dir-expense',
-  '--dir-income',
-];
-
-/** 화면이 그려지기 전에도 쓸 수 있는 대비값. globals.css 와 같은 값을 둔다. */
+/** globals.css 와 같은 값이어야 한다. 다르면 첫 프레임만 옛 색으로 그려진다. */
 const FALLBACK: Record<string, string> = {
-  '--cat-1': 'oklch(0.62 0.16 255)',
-  '--cat-2': 'oklch(0.72 0.15 75)',
-  '--cat-3': 'oklch(0.6 0.15 165)',
-  '--cat-4': 'oklch(0.66 0.19 20)',
-  '--cat-5': 'oklch(0.55 0.17 300)',
-  '--cat-6': 'oklch(0.75 0.13 120)',
-  '--cat-7': 'oklch(0.68 0.14 210)',
-  '--cat-8': 'oklch(0.6 0.13 45)',
-  '--cat-9': 'oklch(0.7 0.1 330)',
-  '--cat-10': 'oklch(0.5 0.08 260)',
-  '--dir-expense': 'oklch(0.58 0.19 15)',
-  '--dir-income': 'oklch(0.6 0.13 165)',
+  '--dir-expense': '#bb3e50',
+  '--dir-income': '#18765a',
+  '--chart-1': '#4f5fe8',
+  '--ink-3': '#667085',
+  '--line': '#dde3ee',
+  '--surface': '#ffffff',
 };
 
 function useTokens(): Record<string, string> {
@@ -49,102 +38,91 @@ function useTokens(): Record<string, string> {
   useEffect(() => {
     const style = getComputedStyle(document.documentElement);
     const next: Record<string, string> = {};
-    for (const k of TOKEN_KEYS) {
-      const v = style.getPropertyValue(k).trim();
-      next[k] = v || FALLBACK[k];
-    }
+    for (const k of TOKEN_KEYS) next[k] = style.getPropertyValue(k).trim() || FALLBACK[k];
     setTokens(next);
   }, []);
   return tokens;
 }
 
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
-const short = (n: number) =>
-  n >= 100_000_000
-    ? `${Math.round(n / 10_000_000) / 10}억`
-    : n >= 10_000
-      ? `${Math.round(n / 1_000) / 10}만`
-      : String(n);
+/* ------------------------------------------------------------- 분류별 지출 */
 
-function TooltipBox({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: { name?: string; value?: number; payload?: { name?: string } }[];
-  label?: string | number;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs shadow-lg">
-      <p className="font-medium text-[var(--ink)]">{label ?? payload[0].payload?.name}</p>
-      {payload.map((p, i) => (
-        <p key={i} className="tabular mt-0.5 text-neutral-600">
-          {p.name ? `${p.name} ` : ''}
-          {won(p.value ?? 0)}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-export interface Slice {
+export interface CategoryAmount {
+  id: string;
   name: string;
-  value: number;
+  amount: number;
 }
 
-export function CategoryDonut({ data }: { data: Slice[] }) {
-  const tokens = useTokens();
-  const catColors = Array.from({ length: 10 }, (_, i) => tokens[`--cat-${i + 1}`]);
-  if (data.length === 0) {
-    return <p className="py-10 text-center text-sm text-[var(--ink-3)]">이 기간 지출 기록 없음</p>;
-  }
-  const total = data.reduce((s, d) => s + d.value, 0);
-  return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <div className="h-52 w-full sm:w-52">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={58}
-              outerRadius={92}
-              paddingAngle={2}
-              isAnimationActive={false}
-            >
-              {data.map((_, i) => (
-                <Cell key={i} fill={catColors[i % catColors.length]} stroke="white" strokeWidth={2} />
-              ))}
-            </Pie>
-            <Tooltip content={<TooltipBox />} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+/**
+ * 분류별 지출 — 내림차순 가로 막대.
+ *
+ * 도넛을 기본에서 내렸다: 작은 지출이 0% 로 사라지고, 범례와 금액이 멀어져
+ * "무엇에 얼마를 썼나"라는 질문에 답하지 못했다(검수 V11).
+ * 0 보다 큰데 반올림으로 0% 가 되는 값은 '1% 미만'으로 적는다.
+ */
+export function CategoryBars({ rows }: { rows: CategoryAmount[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const total = rows.reduce((s, r) => s + r.amount, 0);
 
-      <ul className="flex-1 space-y-1.5">
-        {data.map((d, i) => (
-          <li key={d.name} className="flex items-center gap-2 text-sm">
-            <span
-              aria-hidden
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ background: catColors[i % catColors.length] }}
-            />
-            <span className="min-w-0 flex-1 truncate text-[var(--ink-2)]">{d.name}</span>
-            <span className="tabular text-[var(--ink-3)]">
-              {total > 0 ? Math.round((d.value / total) * 100) : 0}%
-            </span>
-            <span className="tabular w-24 text-right font-medium text-[var(--ink)]">{won(d.value)}</span>
-          </li>
-        ))}
+  if (rows.length === 0 || total === 0) {
+    return <p className="py-8 text-center text-[15px] text-[var(--ink-2)]">이 기간에 저장한 지출이 없어요.</p>;
+  }
+
+  const sorted = [...rows].sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id));
+  const TOP = 6;
+  const shown = expanded ? sorted : sorted.slice(0, TOP);
+  const max = sorted[0].amount;
+
+  return (
+    <div>
+      <ul className="flex flex-col gap-3">
+        {shown.map((r) => {
+          const ratio = r.amount / total;
+          const percentText = ratio > 0 && ratio < 0.01 ? '1% 미만' : `${Math.round(ratio * 100)}%`;
+          return (
+            <li key={r.id}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--ink)]">{r.name}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className="tabular text-[13px] text-[var(--ink-3)]">{percentText}</span>
+                  {/* 제목이 '분류별 지출'이라 방향을 말한다. 숫자는 중립색으로 둔다(§14). */}
+                  <span className="tabular whitespace-nowrap font-semibold text-[var(--ink)]">
+                    {formatWon(r.amount)}
+                  </span>
+                </span>
+              </div>
+              {/*
+               * 막대 길이는 **가장 큰 분류 대비**다. 옆의 %는 전체 대비다.
+               * 둘의 분모가 다르므로 이 차트는 '금액 비교'로 읽히게 두고,
+               * 비중은 숫자로만 말한다(§14).
+               * 최소 길이를 키워 실제보다 큰 비중처럼 보이게 하지 않는다.
+               */}
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--surface-2)]">
+                {/* 차트 전용 계열색. 거래 방향의 빨강을 여기서 되풀이하지 않는다(§14). */}
+                <div
+                  className="h-full rounded-full bg-[var(--chart-1)]"
+                  style={{ width: `${(r.amount / max) * 100}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
       </ul>
+
+      {sorted.length > TOP ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-4 text-[15px] text-[var(--primary)] underline"
+        >
+          {expanded ? '상위 분류만 보기' : `모든 분류 보기 (${sorted.length}개)`}
+        </button>
+      ) : null}
     </div>
   );
 }
+
+/* ----------------------------------------------------------------- 추이 */
 
 export interface TrendPoint {
   label: string;
@@ -152,75 +130,90 @@ export interface TrendPoint {
   expense: number;
 }
 
+/**
+ * 기간 추이 — 지출과 수입을 **같은 눈금**의 한 그래프에 둔다(§14).
+ *
+ * 전에는 축을 나눠 그렸는데, 그러면 비슷한 높이가 비슷한 금액처럼 보인다.
+ * 같은 눈금에 두면 수입이 클 때 지출 막대가 작아지지만 그것이 사실이다.
+ * 정확한 값은 아래 표가 늘 함께 제공한다.
+ */
 export function TrendBars({ data }: { data: TrendPoint[] }) {
   const tokens = useTokens();
-  if (data.length < 2) {
-    return (
-      <p className="py-10 text-center text-sm text-[var(--ink-3)]">
-        비교 기간 부족. 변화가 없다는 뜻은 아님.
-      </p>
-    );
+
+  if (data.length === 0) {
+    return <p className="py-8 text-center text-[15px] text-[var(--ink-2)]">비교할 기간이 부족해요.</p>;
   }
 
-  // 수입과 지출을 한 축에 두면 큰 쪽이 작은 쪽을 눌러 읽을 수 없게 된다.
-  // 월급 320만과 식비 6만을 같은 눈금에 그리면 식비는 사실상 보이지 않는다.
-  // 그래서 축을 나눈다 — 비교 대상이 다른 두 이야기이기 때문이다.
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      <TrendOne data={data} dataKey="expense" label="지출" color={tokens['--dir-expense']} />
-      <TrendOne data={data} dataKey="income" label="수입" color={tokens['--dir-income']} />
-    </div>
-  );
-}
+    <div className="flex flex-col gap-4">
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+            <CartesianGrid stroke={tokens['--line']} vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: tokens['--ink-3'], fontSize: 12 }}
+              tickLine={false}
+              axisLine={{ stroke: tokens['--line'] }}
+            />
+            <YAxis
+              tick={{ fill: tokens['--ink-3'], fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              width={52}
+              tickFormatter={(v: number) => (v >= 10000 ? `${Math.round(v / 10000)}만` : String(v))}
+            />
+            <Tooltip
+              cursor={{ fill: tokens['--line'], opacity: 0.4 }}
+              contentStyle={{
+                background: tokens['--surface'],
+                border: `1px solid ${tokens['--line']}`,
+                borderRadius: 8,
+                fontSize: 13,
+              }}
+              formatter={(v, name) => [formatWon(Number(v ?? 0)), name === 'expense' ? '지출' : '수입']}
+            />
+            <Bar dataKey="expense" name="지출" fill={tokens['--dir-expense']} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="income" name="수입" fill={tokens['--dir-income']} radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-function TrendOne({
-  data,
-  dataKey,
-  label,
-  color,
-}: {
-  data: TrendPoint[];
-  dataKey: 'income' | 'expense';
-  label: string;
-  color: string;
-}) {
-  const empty = data.every((d) => d[dataKey] === 0);
-  return (
-    <div>
-      <p className="mb-1 text-xs font-medium text-neutral-600">{label}</p>
-      <div className="h-44 w-full">
-        {empty ? (
-          <p className="flex h-full items-center justify-center text-xs text-[var(--ink-3)]">
-            {label} 기록 없음
-          </p>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 11, fill: 'oklch(0.55 0.02 260)' }}
-              />
-              <YAxis
-                tickFormatter={short}
-                tickLine={false}
-                axisLine={false}
-                width={48}
-                tick={{ fontSize: 11, fill: 'oklch(0.65 0.02 260)' }}
-              />
-              <Tooltip content={<TooltipBox />} cursor={{ fill: 'oklch(0.95 0.005 260)' }} />
-              <Bar
-                dataKey={dataKey}
-                name={label}
-                fill={color}
-                radius={[4, 4, 0, 0]}
-                maxBarSize={36}
-                isAnimationActive={false}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+      <p className="text-[13px] text-[var(--ink-3)]">지출과 수입은 같은 눈금으로 그렸어요.</p>
+
+      {/* 키보드·터치로도 값을 읽을 수 있어야 한다(§14). */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <caption className="sr-only">기간별 지출과 수입</caption>
+          <thead>
+            <tr className="border-b border-[var(--line)] text-left text-[var(--ink-2)]">
+              <th scope="col" className="py-2 font-medium">
+                기간
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                지출
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                수입
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((p) => (
+              <tr key={p.label} className="border-b border-[var(--line)] last:border-0">
+                <th scope="row" className="py-2 text-left font-normal text-[var(--ink)]">
+                  {p.label}
+                </th>
+                <td className="py-2 text-right">
+                  <Money amount={p.expense} direction={p.expense === 0 ? undefined : 'expense'} signed={false} />
+                </td>
+                <td className="py-2 text-right">
+                  <Money amount={p.income} direction={p.income === 0 ? undefined : 'income'} signed={false} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

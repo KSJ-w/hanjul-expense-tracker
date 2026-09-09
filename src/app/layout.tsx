@@ -13,16 +13,23 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * 셸 — ADR-021.
+ *
+ * 내비게이션은 상단 하나뿐이다. **하단은 기록 입력 프롬프트의 자리로 비워 둔다.**
+ * 프롬프트가 있는 화면은 스스로 `has-dock` 으로 바닥 여백을 확보한다.
+ * 콘텐츠 최대 폭은 1056px — 달력과 프롬프트가 같은 좌우 끝을 갖도록 맞춘 값이다(§8).
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <body>
         <Providers>
-          <div className="app-shell">
-            <div className="mx-auto flex w-full max-w-6xl flex-col px-5 pb-4 pt-4">
-              <Nav />
-              <main className="mt-4 flex flex-1 flex-col pb-1">{children}</main>
-            </div>
+          <div className="flex min-h-dvh flex-col">
+            <Nav />
+            <main className="mx-auto w-full max-w-[1056px] flex-1 px-4 pb-8 pt-4 sm:px-6 sm:pt-6">
+              {children}
+            </main>
           </div>
         </Providers>
       </body>

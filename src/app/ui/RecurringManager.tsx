@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react';
 import type { Category, Direction, RecurringItem } from '@/lib/domain/types';
 import { addRecurringAction, removeRecurringAction, toggleRecurringAction } from '../actions';
-import { btn, Field, inputClass, Money } from './atoms';
+import { btn, Field, inputClass, Money, StatusMessage } from './atoms';
 
 /**
- * 반복 항목 — FR-ENTRY-12.
- * 등록해 두면 그 날짜에 '후보'로 올라온다. 확인해야 기록이 된다(FR-ENTRY-05).
+ * 반복 기록 — FR-ENTRY-12, ADR-020.
+ *
+ * 예정일에 **저장 전 확인 목록에 추가**된다. 자동으로 확정되지 않는다(FR-ENTRY-05).
+ * 그래서 '자동 등록'이라고 부르지 않는다(§16).
  */
 export function RecurringManager({
   items,
@@ -29,15 +31,17 @@ export function RecurringManager({
   const pool = categories.filter((c) => c.direction === direction);
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {items.length > 0 ? (
-        <ul className="mb-4 divide-y divide-[var(--line)]">
+        <ul className="flex flex-col">
           {items.map((it) => (
-            <li key={it.id} className="flex items-center gap-3 py-2.5">
-              <span className="tabular w-14 shrink-0 text-xs text-[var(--ink-3)]">
-                {it.anchorDay}일
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-[var(--ink)]">{it.name}</span>
+            <li
+              key={it.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--line)] py-3 last:border-0"
+            >
+              <span className="min-w-0 flex-1 truncate text-[15px]">{it.name}</span>
+              <span className="text-[13px] text-[var(--ink-2)]">매월 {it.anchorDay}일</span>
+              <span className="text-[13px] text-[var(--ink-2)]">{it.active ? '켜짐' : '멈춤'}</span>
               <Money amount={it.amount} direction={it.direction} />
               <button
                 type="button"
@@ -45,46 +49,54 @@ export function RecurringManager({
                 disabled={pending}
                 onClick={() => startTransition(() => toggleRecurringAction(it.id, !it.active))}
               >
-                {it.active ? '중지' : '재개'}
+                {it.active ? '멈추기' : '다시 켜기'}
               </button>
               <button
                 type="button"
-                className={btn.danger}
+                className={btn.ghost}
                 disabled={pending}
                 onClick={() => startTransition(() => removeRecurringAction(it.id))}
               >
-                삭제
+                목록에서 지우기
               </button>
             </li>
           ))}
         </ul>
       ) : null}
 
+      <p className="text-[13px] text-[var(--ink-3)]">
+        멈추면 예정일이 와도 목록에 올라오지 않아요. 목록에서 지워도 이미 저장한 기록은 그대로예요.
+        29·30·31일처럼 그 달에 없는 날짜는 그 달의 마지막 날로 당겨서 올라와요.
+      </p>
+
       {!open ? (
-        <button type="button" className={btn.soft} onClick={() => setOpen(true)}>
-          반복 추가
+        <button type="button" className={btn.outline} onClick={() => setOpen(true)}>
+          반복 기록 추가
         </button>
       ) : (
-        <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg)] p-3">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <Field label="이름">
+        <div className="rounded-[var(--r-control)] bg-[var(--surface-2)] p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="이름" htmlFor="rec-name">
               <input
+                id="rec-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="넷플릭스"
                 className={inputClass}
               />
             </Field>
-            <Field label="금액">
+            <Field label="금액" htmlFor="rec-amount">
               <input
+                id="rec-amount"
                 inputMode="numeric"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className={`${inputClass} tabular`}
               />
             </Field>
-            <Field label="수입/지출">
+            <Field label="수입과 지출" htmlFor="rec-direction">
               <select
+                id="rec-direction"
                 value={direction}
                 onChange={(e) => {
                   setDirection(e.target.value as Direction);
@@ -96,13 +108,14 @@ export function RecurringManager({
                 <option value="income">수입</option>
               </select>
             </Field>
-            <Field label="태그">
+            <Field label="분류" htmlFor="rec-category">
               <select
+                id="rec-category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className={inputClass}
               >
-                <option value="">태그 없음</option>
+                <option value="">미분류</option>
                 {pool.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -110,8 +123,9 @@ export function RecurringManager({
                 ))}
               </select>
             </Field>
-            <Field label="기준일">
+            <Field label="매월 기록일" htmlFor="rec-day" hint="1부터 31까지 정할 수 있어요.">
               <input
+                id="rec-day"
                 inputMode="numeric"
                 value={anchorDay}
                 onChange={(e) => setAnchorDay(e.target.value)}
@@ -120,9 +134,13 @@ export function RecurringManager({
             </Field>
           </div>
 
-          {msg ? <p className="mt-2 text-xs text-amber-700">{msg}</p> : null}
+          {msg ? (
+            <div className="mt-3">
+              <StatusMessage tone="warn">{msg}</StatusMessage>
+            </div>
+          ) : null}
 
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end gap-2">
             <button type="button" className={btn.ghost} onClick={() => setOpen(false)}>
               취소
             </button>
@@ -140,7 +158,7 @@ export function RecurringManager({
                     anchorDay: Number(anchorDay.replace(/[^\d]/g, '')),
                   });
                   if (!r.ok) {
-                    setMsg(r.message ?? '값 확인 필요');
+                    setMsg(r.message ?? '값을 다시 확인해 주세요.');
                     return;
                   }
                   setMsg(null);
@@ -154,7 +172,6 @@ export function RecurringManager({
           </div>
         </div>
       )}
-
     </div>
   );
 }
