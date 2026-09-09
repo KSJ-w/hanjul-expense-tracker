@@ -95,7 +95,7 @@ export function TagManager({
               </>
             ) : (
               <>
-                <TagChip name={c.name} index={indexOf(c.id)} />
+                <TagChip name={c.name} />
                 <span className="flex-1" />
                 {c.seeded ? (
                   <span className="rounded-full bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--ink-3)]">

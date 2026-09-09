@@ -25,15 +25,15 @@ export function Nav() {
       <Link href="/" className="flex w-fit items-center gap-2.5 pb-3">
         <span
           aria-hidden
-          className="grid size-9 place-items-center rounded-[12px] bg-[var(--primary)] text-[var(--primary-ink)] shadow-[var(--shadow-sm)]"
+          className="grid size-11 place-items-center rounded-[14px] bg-[var(--primary)] text-[var(--primary-ink)] shadow-[var(--shadow-sm)]"
         >
-          <svg viewBox="0 0 24 24" className="size-5" fill="none">
+          <svg viewBox="0 0 24 24" className="size-6" fill="none">
             <rect x="3.5" y="5" width="17" height="15" rx="4.5" stroke="currentColor" strokeWidth="1.7" />
             <path d="M8 3.4v3.2M16 3.4v3.2M3.5 10h17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
             <circle cx="12" cy="15" r="1.9" fill="currentColor" />
           </svg>
         </span>
-        <span className="text-[17px] font-semibold tracking-tight">한줄 가계부</span>
+        <span className="text-[26px] font-semibold tracking-tight">한줄 가계부</span>
       </Link>
 
       <nav aria-label="탭" className="-mb-px flex items-center gap-0.5 overflow-x-auto">

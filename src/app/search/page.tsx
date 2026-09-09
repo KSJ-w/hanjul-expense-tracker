@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db';
 import { listCategories } from '@/lib/repo/categories';
 import { queryRecords } from '@/lib/repo/records';
 import type { Direction, RecordQuery } from '@/lib/domain/types';
-import { btn, DirectionChip, EmptyNote, inputClass, Money, Panel, PanelTitle, TagChip } from '../ui/atoms';
+import { btn, EmptyNote, inputClass, Money, Panel, PanelTitle, TagChip } from '../ui/atoms';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,10 +104,12 @@ export default async function SearchPage({
                       >
                         {r.date}
                       </Link>
-                      <DirectionChip direction={r.direction} />
                       <span className="min-w-0 flex-1 truncate text-sm">{r.note || '내용 없음'}</span>
-                      {cat ? <TagChip name={cat.name} index={categories.indexOf(cat)} /> : null}
-                      <Money amount={r.amount} direction={r.direction} />
+                      {cat ? <TagChip name={cat.name} /> : null}
+                      {/* 숫자는 오른쪽으로 맞춘다 — 줄마다 자릿수가 달라도 자리가 어긋나지 않는다 */}
+                      <span className="w-28 shrink-0 text-right">
+                        <Money amount={r.amount} direction={r.direction} />
+                      </span>
                     </li>
                   );
                 })}

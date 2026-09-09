@@ -58,7 +58,7 @@ export default function EtcPage() {
                 <span className="flex-1 truncate">{r.merchant}</span>
                 <span className="text-[var(--ink-3)]">→</span>
                 {r.categoryName ? (
-                  <TagChip name={r.categoryName} index={r.index} />
+                  <TagChip name={r.categoryName} />
                 ) : (
                   <span className="text-xs text-[var(--ink-3)]">삭제된 태그</span>
                 )}

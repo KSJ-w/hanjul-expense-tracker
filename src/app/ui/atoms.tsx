@@ -3,6 +3,13 @@ import type { Direction } from '@/lib/domain/types';
 /**
  * 화면 조각. 색·모서리·그림자는 globals.css 의 토큰만 쓴다(ADR-006).
  *
+ * **한 색은 한 뜻만 가진다(ADR-017).**
+ *   적·녹 = 거래 방향. 금액에만 붙는다.
+ *   파랑  = 지금 있는 곳과 주 동작(현재 탭·오늘·저장·포커스).
+ *   cat-* = 계열 구분. 차트 안에서만 쓴다.
+ *   그 밖의 모든 것은 중립이다 — 글자 3단, 면 3단, 선.
+ * 뜻 없는 색을 더하지 않는다. 같은 뜻을 두 곳에서 색으로 되풀이하지도 않는다.
+ *
  * 글은 명사형으로 끝낸다 — 화면의 이름표는 문장이 아니라 이름이다.
  * 다만 "찾지 못함"과 "없었음"은 끝까지 구분한다(FR-VIEW-07).
  */
@@ -22,39 +29,33 @@ export function Money({
       : direction === 'expense'
         ? 'text-[var(--dir-expense)]'
         : 'text-[var(--ink)]';
-  const sign = direction === 'income' ? '+' : direction === 'expense' ? '−' : '';
+  /*
+   * 음수 부호는 어디서나 같은 글자여야 한다. 방향이 없는 금액(잔액)에 그냥
+   * toLocaleString 을 쓰면 ASCII 하이픈이 나와, 옆 칸의 지출('−', U+2212)과
+   * 나란히 두면 길이와 높이가 어긋나 보인다.
+   */
+  const negative = direction === 'expense' || amount < 0;
+  // 0 에는 부호를 붙이지 않는다 — '−0원' 은 뜻이 없는 기호만 남긴다.
+  const sign = amount === 0 ? '' : direction === 'income' ? '+' : negative ? '−' : '';
   return (
     <span className={`tabular font-semibold ${color} ${className}`}>
       {sign}
-      {amount.toLocaleString('ko-KR')}원
+      {Math.abs(amount).toLocaleString('ko-KR')}원
     </span>
   );
 }
 
-export function DirectionChip({ direction }: { direction: Direction }) {
-  const income = direction === 'income';
+/**
+ * 태그 이름표 — 중립이다.
+ *
+ * 전에는 태그마다 색을 달리 줬으나, 그 색은 "이 태그와 저 태그가 다르다"는 것 말고
+ * 아무 뜻도 없으면서 금액의 적·녹과 같은 세기로 눈에 들어왔다. 계열을 색으로
+ * 나누는 일은 차트가 맡는다 — 거기서는 색이 곧 계열이라는 뜻을 가진다(ADR-017).
+ */
+export function TagChip({ name }: { name: string }) {
   return (
-    <span
-      className={[
-        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
-        income
-          ? 'bg-[color-mix(in_oklch,var(--dir-income)_13%,white)] text-[var(--dir-income)]'
-          : 'bg-[color-mix(in_oklch,var(--dir-expense)_11%,white)] text-[var(--dir-expense)]',
-      ].join(' ')}
-    >
-      {income ? '수입' : '지출'}
-    </span>
-  );
-}
-
-export function TagChip({ name, index = 0 }: { name: string; index?: number }) {
-  const color = `var(--cat-${(index % 10) + 1})`;
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-      style={{ background: `color-mix(in oklch, ${color} 12%, white)`, color }}
-    >
-      <span aria-hidden>#</span>
+    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-[var(--r-sm)] bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--ink-2)] ring-1 ring-[var(--line)]">
+      <span aria-hidden className="text-[var(--ink-3)]">#</span>
       {name}
     </span>
   );

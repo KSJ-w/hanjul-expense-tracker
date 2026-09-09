@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import type { Category, Direction, RecurringItem } from '@/lib/domain/types';
 import { addRecurringAction, removeRecurringAction, toggleRecurringAction } from '../actions';
-import { btn, DirectionChip, Field, inputClass, Money } from './atoms';
+import { btn, Field, inputClass, Money } from './atoms';
 
 /**
  * 반복 항목 — FR-ENTRY-12.
@@ -37,7 +37,6 @@ export function RecurringManager({
               <span className="tabular w-14 shrink-0 text-xs text-[var(--ink-3)]">
                 {it.anchorDay}일
               </span>
-              <DirectionChip direction={it.direction} />
               <span className="min-w-0 flex-1 truncate text-sm text-[var(--ink)]">{it.name}</span>
               <Money amount={it.amount} direction={it.direction} />
               <button
