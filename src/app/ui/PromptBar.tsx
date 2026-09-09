@@ -4,8 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import type { Candidate, Category } from '@/lib/domain/types';
 import { stageFromInput } from '../actions';
 import { CandidateDialog } from './CandidateDialog';
-import { Dialog } from './Dialog';
-import { btn } from './atoms';
 
 /**
  * 자동 입력 — 주 동선(FR-ENTRY-17).
@@ -17,21 +15,16 @@ export function PromptBar({
   categories,
   pending: pendingCandidates,
   imageNotice,
-  usesNetwork,
-  outbound,
 }: {
   categories: Category[];
   pending: Candidate[];
   imageNotice: string;
-  usesNetwork: boolean;
-  outbound: { key: string; label: string; detail: string }[];
 }) {
   const [text, setText] = useState('');
   const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
   const [note, setNote] = useState<{ tone: 'warn' | 'error'; text: string } | null>(null);
   const [busy, startTransition] = useTransition();
   const [dialog, setDialog] = useState<Candidate[] | null>(null);
-  const [outboundOpen, setOutboundOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,7 +62,8 @@ export function PromptBar({
 
   return (
     <div className="sticky bottom-0 z-20 -mx-5 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent px-5 pb-5 pt-6">
-      <div className="mx-auto w-full max-w-5xl">
+      {/* 폭은 달력과 같다 — 입력줄이 좁으면 화면의 중심이 둘로 갈린다 */}
+      <div className="w-full">
         {note ? (
           <p
             role="status"
@@ -197,18 +191,6 @@ export function PromptBar({
           </button>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-3 px-2">
-          <p className="text-[11px] text-[var(--ink-3)]">
-            ↵ 입력 · Shift+↵ 줄바꿈 · 확인 후 저장
-          </p>
-          <button
-            type="button"
-            onClick={() => setOutboundOpen(true)}
-            className="text-[11px] text-[var(--ink-3)] underline-offset-2 hover:text-[var(--ink)] hover:underline"
-          >
-            {usesNetwork ? '전송 항목' : '기기 내 처리'}
-          </button>
-        </div>
       </div>
 
       <CandidateDialog
@@ -218,31 +200,6 @@ export function PromptBar({
         onClose={() => setDialog(null)}
       />
 
-      {/* FR-ENTRY-16 — 나가는 항목을 항목 이름 수준으로 보여 준다 */}
-      <Dialog
-        open={outboundOpen}
-        onClose={() => setOutboundOpen(false)}
-        title="전송 항목"
-        subtitle={usesNetwork ? '해석 요청 시에만 전송' : '기기 밖으로 나가는 항목 없음'}
-      >
-        {outbound.length === 0 ? (
-          <p className="pb-4 text-sm text-[var(--ink-2)]">
-            현재 기기 안에서만 해석. 밖으로 나가는 항목 없음.
-          </p>
-        ) : (
-          <ul className="divide-y divide-[var(--line)] pb-2">
-            {outbound.map((f) => (
-              <li key={f.key} className="py-2.5">
-                <p className="text-sm font-medium">{f.label}</p>
-                <p className="mt-0.5 text-xs text-[var(--ink-3)]">{f.detail}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="pb-4 text-[11px] text-[var(--ink-3)]">
-          조회·요약·백업에서는 전송 없음.
-        </p>
-      </Dialog>
     </div>
   );
 }

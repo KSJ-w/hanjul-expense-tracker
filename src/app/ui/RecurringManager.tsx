@@ -156,9 +156,6 @@ export function RecurringManager({
         </div>
       )}
 
-      <p className="mt-3 text-xs text-[var(--ink-3)]">
-        그 달에 없는 날짜(31일 등)는 마지막 날로 당겨짐. 올라온 뒤에도 확인 후 저장.
-      </p>
     </div>
   );
 }

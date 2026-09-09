@@ -36,9 +36,9 @@ export default async function CalendarPage({
   const totals = totalsInRange(from, to, db);
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] flex-col gap-4">
-      <Panel className="!p-5">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+    <div className="flex flex-1 flex-col gap-3">
+      <Panel className="flex flex-1 flex-col !p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-1">
             <Link
               href={`/?m=${shiftMonth(monthKey, -1)}`}
@@ -84,15 +84,7 @@ export default async function CalendarPage({
         />
       </Panel>
 
-      <div className="min-h-4 flex-1" />
-
-      <PromptBar
-        categories={categories}
-        pending={state.candidates}
-        imageNotice={state.imageNotice}
-        usesNetwork={state.provider.usesNetwork}
-        outbound={state.outbound}
-      />
+      <PromptBar categories={categories} pending={state.candidates} imageNotice={state.imageNotice} />
     </div>
   );
 }

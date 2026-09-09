@@ -95,16 +95,16 @@ export function PanelTitle({
 
 /**
  * 빈 결과 — FR-VIEW-07.
- * "기록 없음"은 기록이 없다는 뜻이지 거래가 없었다는 뜻이 아니다.
- * 두 번째 줄이 그 구분을 지킨다. 이 컴포넌트를 부재의 표시로 쓰지 않는다.
+ *
+ * 문구는 **기록**이 없다고만 말한다. 거래가 없었다고 말하지 않는다.
+ * 그 구분은 낱말이 지킨다 — 설명 문장을 덧붙여 지키던 것을 걷어냈다.
+ * FR-VIEW-07 이 금지하는 것은 부재를 단정하는 표현이지 설명의 부재가 아니다.
+ * 이 컴포넌트를 "거래 없음"의 표시로 쓰지 않는다.
  */
-export function EmptyNote({ title = '기록 없음', hint }: { title?: string; hint?: string }) {
+export function EmptyNote({ title = '기록 없음' }: { title?: string }) {
   return (
     <div className="rounded-[var(--r-md)] border border-dashed border-[var(--line)] bg-[var(--bg)] px-4 py-8 text-center">
       <p className="text-sm font-medium text-[var(--ink-2)]">{title}</p>
-      <p className="mt-1 text-xs text-[var(--ink-3)]">
-        {hint ?? '아직 적지 않은 지출이 있을 수 있음'}
-      </p>
     </div>
   );
 }

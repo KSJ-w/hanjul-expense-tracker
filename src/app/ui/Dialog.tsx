@@ -13,6 +13,8 @@ export function Dialog({
   subtitle,
   children,
   footer,
+  /** 푸터의 배치. 버튼 줄이 기본이지만 입력 영역을 통째로 받는 곳도 있다. */
+  footerClassName = 'flex items-center justify-end gap-2',
   width = 'md',
 }: {
   open: boolean;
@@ -21,6 +23,7 @@ export function Dialog({
   subtitle?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  footerClassName?: string;
   width?: 'md' | 'lg';
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -76,9 +79,7 @@ export function Dialog({
       <div className="max-h-[70vh] overflow-y-auto px-6 pb-2">{children}</div>
 
       {footer ? (
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--line)] px-6 py-4">
-          {footer}
-        </div>
+        <div className={`border-t border-[var(--line)] px-6 py-4 ${footerClassName}`}>{footer}</div>
       ) : (
         <div className="pb-4" />
       )}

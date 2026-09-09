@@ -1,16 +1,17 @@
 import Link from 'next/link';
 import { getDb } from '@/lib/db';
-import { getCategoryName, listCategories } from '@/lib/repo/categories';
-import { categoryBreakdown, periodSeries, queryRecords, totalsForPeriod } from '@/lib/repo/records';
-import { budgetComparison } from '@/lib/repo/budgets';
+import { getCategoryName } from '@/lib/repo/categories';
+import { categoryBreakdown, periodSeries, totalsForPeriod } from '@/lib/repo/records';
 import { periodRange, todayISO, type PeriodType } from '@/lib/domain/date';
-import type { Direction, RecordQuery } from '@/lib/domain/types';
-import { btn, DirectionChip, EmptyNote, inputClass, Money, Panel, PanelTitle, TagChip } from '../ui/atoms';
-import { BudgetBars, CategoryDonut, TrendBars } from '../ui/Charts';
-import { BudgetEditor } from '../ui/BudgetEditor';
+import { Money, Panel, PanelTitle } from '../ui/atoms';
+import { CategoryDonut, TrendBars } from '../ui/Charts';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * 대시보드 — 기간 요약만 맡는다(ADR-013).
+ * 검색은 자기 탭으로 나갔고, 예산 화면은 ADR-014 로 유보했다.
+ */
 const TABS: { key: PeriodType; label: string }[] = [
   { key: 'week', label: '주' },
   { key: 'month', label: '월' },
@@ -40,30 +41,6 @@ export default async function DashboardPage({
     income: p.income,
     expense: p.expense,
   }));
-
-  const monthKey = today.slice(0, 7);
-  const budgets = budgetComparison(monthKey, db).map((b) => ({
-    categoryId: b.categoryId,
-    name: getCategoryName(b.categoryId, db) ?? '삭제된 태그',
-    budget: b.budget,
-    spent: b.spent,
-  }));
-  const categories = listCategories(undefined, db);
-  const expenseTags = categories.filter((c) => c.direction === 'expense');
-
-  // 검색 — FR-VIEW-06
-  const q: RecordQuery = {
-    from: sp.from || undefined,
-    to: sp.to || undefined,
-    categoryId: sp.cat || undefined,
-    direction: (sp.dir as Direction) || undefined,
-    amountMin: sp.min ? Number(sp.min) : undefined,
-    amountMax: sp.max ? Number(sp.max) : undefined,
-    text: sp.q || undefined,
-    limit: 200,
-  };
-  const searching = Boolean(sp.from || sp.to || sp.cat || sp.dir || sp.min || sp.max || sp.q);
-  const found = searching ? queryRecords(q, db) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,101 +96,6 @@ export default async function DashboardPage({
           추이
         </PanelTitle>
         <TrendBars data={series} />
-      </Panel>
-
-      <Panel>
-        <PanelTitle hint={monthKey}>예산</PanelTitle>
-        <BudgetBars rows={budgets.map(({ name, budget, spent }) => ({ name, budget, spent }))} />
-        <div className="mt-5 border-t border-[var(--line)] pt-4">
-          <BudgetEditor
-            categories={expenseTags.map((c) => ({ id: c.id, name: c.name }))}
-            current={budgets.map((b) => ({ categoryId: b.categoryId, budget: b.budget }))}
-            periodKey={monthKey}
-          />
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelTitle hint={found ? `${found.items.length}건` : '조건 입력'}>검색</PanelTitle>
-
-        <form method="get" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          <input type="hidden" name="p" value={period} />
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">시작</span>
-            <input type="date" name="from" defaultValue={sp.from ?? ''} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">끝</span>
-            <input type="date" name="to" defaultValue={sp.to ?? ''} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">수입/지출</span>
-            <select name="dir" defaultValue={sp.dir ?? ''} className={inputClass}>
-              <option value="">전체</option>
-              <option value="expense">지출</option>
-              <option value="income">수입</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">태그</span>
-            <select name="cat" defaultValue={sp.cat ?? ''} className={inputClass}>
-              <option value="">전체</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">최소</span>
-            <input name="min" inputMode="numeric" defaultValue={sp.min ?? ''} className={`${inputClass} tabular`} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">최대</span>
-            <input name="max" inputMode="numeric" defaultValue={sp.max ?? ''} className={`${inputClass} tabular`} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-[var(--ink-2)]">내용</span>
-            <input name="q" defaultValue={sp.q ?? ''} placeholder="회식" className={inputClass} />
-          </label>
-          <div className="col-span-2 flex items-end gap-2 sm:col-span-4 lg:col-span-7">
-            <button type="submit" className={btn.primary}>
-              검색
-            </button>
-            <Link href={`/dashboard?p=${period}`} className={btn.ghost}>
-              초기화
-            </Link>
-          </div>
-        </form>
-
-        {found ? (
-          <div className="mt-5 border-t border-[var(--line)] pt-4">
-            {found.items.length === 0 ? (
-              <EmptyNote title="조건에 맞는 기록 없음" hint="조건 변경 후 재검색. 거래가 없었다는 뜻은 아님." />
-            ) : (
-              <ul className="divide-y divide-[var(--line)]">
-                {found.items.map((r) => {
-                  const cat = categories.find((c) => c.id === r.categoryId);
-                  return (
-                    <li key={r.id} className="flex items-center gap-3 py-2.5">
-                      <Link
-                        href={`/?m=${r.date.slice(0, 7)}`}
-                        className="tabular w-24 shrink-0 text-xs text-[var(--primary)] underline-offset-2 hover:underline"
-                      >
-                        {r.date}
-                      </Link>
-                      <DirectionChip direction={r.direction} />
-                      <span className="min-w-0 flex-1 truncate text-sm">{r.note || '내용 없음'}</span>
-                      {cat ? <TagChip name={cat.name} index={categories.indexOf(cat)} /> : null}
-                      <Money amount={r.amount} direction={r.direction} />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        ) : null}
       </Panel>
     </div>
   );

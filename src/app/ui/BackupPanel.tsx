@@ -56,12 +56,6 @@ export function BackupPanel({ dataDir }: { dataDir: string }) {
         </p>
       ) : null}
 
-      <ul className="mt-3 space-y-1 text-[11px] text-[var(--ink-3)]">
-        <li>· 내보내기: 기록 + 영수증 한 묶음. 이 파일 하나로 복원 가능</li>
-        <li>· CSV: 표 계산 도구용. 복원용 아님</li>
-        <li>· 들여오기: 이미 있는 기록은 건너뜀. 덮어쓰기 없음</li>
-      </ul>
-
       <p className="mt-4 border-t border-[var(--line)] pt-3 text-[11px] text-[var(--ink-3)]">
         저장 위치 <code className="rounded bg-[var(--bg)] px-1.5 py-0.5">{dataDir}</code>
       </p>

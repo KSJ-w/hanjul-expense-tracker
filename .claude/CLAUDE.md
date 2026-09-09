@@ -11,7 +11,7 @@
 **달력이 중심**인 개인용 가계부. 날짜를 누르면 그날의 팝업에서 수동 기록이 끝나고,
 하단 프롬프트에 한 줄 적으면 해석 결과가 확인 팝업으로 뜬다.
 **사람이 한 번 확인해야** 기록이 된다. 혼자 쓰는 도구이며 로그인이 없다.
-화면은 달력·대시보드·태그 세 탭뿐이다(ADR-011).
+화면은 달력·대시보드·태그·검색·기타 다섯 탭이고, 한 탭은 한 목적만 맡는다(ADR-013).
 
 - Next.js 16 (App Router, Turbopack) · React 19 · TypeScript
 - 저장: `node:sqlite`(내장) — 네이티브 빌드가 없다. 파일은 `data/expense.db`
@@ -34,7 +34,9 @@
 5. **자동 배정 분류는 언제나 사용자 분류 집합의 원소다.** 없는 분류를 만들어 붙이지
    않는다. 마땅한 것이 없으면 `null`(미확정)로 둔다(`FR-CAT-06`).
 6. **빈 결과를 부재로 표시하지 않는다.** "찾지 못함"과 "없었음"은 다르다(`FR-VIEW-07`).
-   조회 함수는 `{ items, noMatch }` 를 돌려주고 화면은 `NotFoundNote` 를 쓴다.
+   조회 함수는 `{ items, noMatch }` 를 돌려주고 화면은 `EmptyNote` 를 쓴다.
+   `EmptyNote` 는 **기록**이 없다고만 말한다 — 거래가 없었다고 말하지 않는다.
+   설명 문장이 아니라 낱말이 그 구분을 지킨다.
 
 ## 3. 디렉토리 구조
 
@@ -61,7 +63,10 @@ src/lib/
   transfer/index.ts          반출·반입. 기록과 이미지를 한 묶음으로(ADR-008)
 src/app/
   page.tsx                   달력(홈). 이 제품의 중심 화면
-  dashboard/ tags/           나머지 두 탭. 탭은 이 셋뿐이다
+  dashboard/                 기간 요약만. 검색·예산을 여기 다시 넣지 않는다(ADR-013)
+  tags/                      태그 관리만
+  search/                    검색(FR-VIEW-06). 대시보드에서 떼어낸 자기 탭
+  etc/                       자동 배정 기억 · 반복 · 백업. 자리를 정하기 전의 임시 묶음
   actions.ts                 서버 액션. 화면의 모든 변경은 여기를 지난다
   ui/CalendarBoard.tsx       달력 격자 + 날짜 팝업(수동 기록의 전부)
   ui/PromptBar.tsx           하단 자연어 입력 + 확인 팝업 띄우기
@@ -94,7 +99,8 @@ data/                        사용자 데이터. 커밋 금지(.gitignore)
 | `GET /api/export?images=0\|1` | 반출 묶음(JSON) | 기본은 이미지 포함(NFR-VIEW-03) |
 | `GET /api/export/csv` | 표 계산용 CSV | **복원용이 아니다** |
 | `GET /api/image/[id]` | 근거 이미지 | 기기 안 파일을 돌려줄 뿐 |
-| 라우트 | `/`(달력) · `/dashboard` · `/tags` | 탭을 늘리기 전에 ADR-011 을 먼저 고친다 |
+| 라우트 | `/`(달력) · `/dashboard` · `/tags` · `/search` · `/etc` | 탭을 늘리거나 줄이기 전에 ADR-013 을 먼저 고친다 |
+| 예산 | `repo/budgets` · `setBudgetAction` | 화면은 ADR-014 로 내렸다. 계층은 살아 있고 `FR-VIEW-08`·`FR-VIEW-09` 도 유효하다 |
 | `InterpretProvider` | 해석 수단 계약 | 새 수단은 이것만 구현하고 `PROVIDERS` 에 넣는다 |
 
 ## 6. 개발 명령어
@@ -125,6 +131,12 @@ npm run check:docs   # 문서 드리프트 검사 (역반영 됐는지)
   새 참조라 의존성이 매번 바뀌어 렌더가 무한히 반복된다. 화면이 "렌더 미완료"로
   멈추는 증상으로 나타난다(실제로 겪음). 처리한 것은 **id 집합**으로 기억한다 —
   `CandidateDialog` 참조.
+- **달력 칸에 `<button>` 을 쓸 때 `flex flex-col` 을 준다.** 브라우저는 버튼의 내용을
+  버튼이 내용보다 클 때 **세로 가운데로 민다.** `text-left` 만으로는 가로만 잡히고,
+  날짜 숫자가 칸 한복판에 떠서 달력으로 읽히지 않는다(실제로 겪음).
+- **탭 밑줄을 `-bottom-px` 로 컨테이너 밖에 걸치지 않는다.** 넘친 1px 때문에
+  `overflow-x-auto` 가 세로 스크롤바까지 만들어 탭 줄 오른쪽에 15px 짜리 회색 띠가
+  생긴다(실제로 겪음, `scrollHeight 41 > clientHeight 40` 으로 확인). `bottom-0` 을 쓴다.
 - **네이티브 `<dialog>` 에 `m-auto` 를 명시한다.** 리셋이 margin 을 0 으로 만들어
   두면 팝업이 좌상단에 붙는다. `backdrop:bg-transparent` 를 주면 전역 backdrop 이
   덮여 배경이 흐려지지 않는다(둘 다 실제로 겪음).

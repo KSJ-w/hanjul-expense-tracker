@@ -19,9 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <div className="app-shell">
-            <div className="mx-auto flex w-full max-w-6xl flex-col px-5 pb-6 pt-4">
+            <div className="mx-auto flex w-full max-w-6xl flex-col px-5 pb-4 pt-4">
               <Nav />
-              <main className="mt-5 flex-1 pb-2">{children}</main>
+              <main className="mt-4 flex flex-1 flex-col pb-1">{children}</main>
             </div>
           </div>
         </Providers>
