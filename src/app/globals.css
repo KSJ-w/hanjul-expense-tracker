@@ -1,0 +1,84 @@
+@import '@heroui/styles';
+
+@source '../../src';
+
+/* ---------------------------------------------------------------------------
+   ADR-006 — 유료 자원을 도입하지 않고 시각적 특성만 재현한다.
+   방향은 ADR-004 가 고른 HeroUI 의 감각이다: 크게 둥근 모서리, 옅고 넓은 그림자,
+   파란 강조, 넉넉한 여백. 여기서 정한 토큰을 화면과 차트(ADR-005)가 함께 쓴다.
+--------------------------------------------------------------------------- */
+:root {
+  --r-lg: 24px;
+  --r-md: 16px;
+  --r-sm: 12px;
+
+  --bg: oklch(0.985 0.004 260);
+  --surface: oklch(1 0 0);
+  --line: oklch(0.925 0.006 260);
+  --ink: oklch(0.22 0.02 260);
+  --ink-2: oklch(0.48 0.015 260);
+  --ink-3: oklch(0.66 0.012 260);
+
+  /* 강조 — 누를 수 있는 것과 지금 선택된 것에만 쓴다. */
+  --primary: oklch(0.62 0.19 255);
+  --primary-ink: oklch(1 0 0);
+  --primary-soft: oklch(0.95 0.03 255);
+
+  /* 거래 방향의 의미색. 금액 표시와 차트가 같은 값을 쓴다. */
+  --dir-expense: oklch(0.6 0.2 22);
+  --dir-income: oklch(0.62 0.14 165);
+
+  --shadow-sm: 0 1px 2px oklch(0.2 0.02 260 / 0.04);
+  --shadow-md: 0 1px 3px oklch(0.2 0.02 260 / 0.05), 0 12px 32px -14px oklch(0.2 0.02 260 / 0.16);
+  --shadow-lg: 0 24px 60px -20px oklch(0.2 0.02 260 / 0.3);
+
+  /* 태그 색 — 인접 색의 명도를 벌려 겹쳐도 구분되게 한다. */
+  --cat-1: oklch(0.62 0.16 255);
+  --cat-2: oklch(0.74 0.15 75);
+  --cat-3: oklch(0.62 0.15 165);
+  --cat-4: oklch(0.66 0.19 20);
+  --cat-5: oklch(0.57 0.17 300);
+  --cat-6: oklch(0.76 0.13 130);
+  --cat-7: oklch(0.68 0.14 210);
+  --cat-8: oklch(0.62 0.13 45);
+  --cat-9: oklch(0.71 0.11 330);
+  --cat-10: oklch(0.55 0.06 260);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 금액은 자릿수가 흔들리면 읽기 어렵다. 등폭 숫자를 강제한다. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 하단 입력줄이 늘 같은 자리에 있도록 하는 셸 */
+.app-shell {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 100dvh;
+}
+
+dialog::backdrop {
+  background: oklch(0.2 0.02 260 / 0.42);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
