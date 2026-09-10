@@ -203,13 +203,30 @@ export function Field({
   );
 }
 
-/** 입력칸 — 높이 44px, 경계는 인접 면과 3:1 이상. 모달 안 입력은 12~16px 곡선(§7). */
+/**
+ * 입력칸 — **아래 한 줄**이다(ADR-026).
+ *
+ * 네 변을 두른 상자를 쓰지 않는다. 칸마다 상자를 두르면 창 안에 상자가 여럿
+ * 생기고, 정작 읽어야 할 것은 상자가 아니라 그 안의 값이다. 줄 하나면 "여기가
+ * 적는 자리"라는 것을 말하는 데 충분하다.
+ *
+ * 누르면 그 줄이 굵고 진해진다 — 지금 어디에 적고 있는지는 **줄이 말한다**.
+ *
+ * 줄은 테두리가 아니라 `inset` 그림자로 그린다. 두 가지 이유다.
+ *   · 테두리를 1px→2px 로 바꾸면 그만큼 칸의 높이가 달라져 아래 것들이 밀린다
+ *     (ADR-019 — 길이가 변하는 것은 자리를 미리 잡는다). 그림자는 자리를 쓰지 않는다.
+ *   · `border-[...]` 로 색을 바꾸려 했을 때 기본 색 유틸리티를 이기지 못했다
+ *     (실제로 겪음 — 규칙은 생성되는데 적용되지 않았다). 그림자는 한 속성뿐이라
+ *     기본과 focus 가 같은 자리를 다투고, 변형이 확실히 이긴다.
+ *
+ * 높이 44px 는 그대로다. 줄만 남았다고 해서 누를 자리가 좁아지면 안 된다.
+ */
 export const inputClass =
-  'w-full min-w-0 h-11 rounded-[var(--r-control)] border border-[var(--field-line)] bg-[var(--surface)] px-3.5 text-[15px] text-[var(--ink)] outline-none transition-[border-color] placeholder:text-[var(--ink-3)] focus:border-[var(--primary)] disabled:bg-[var(--surface-2)] disabled:text-[var(--ink-3)]';
+  'field-underline w-full min-w-0 h-11 rounded-none border-0 bg-transparent px-0.5 text-[15px] text-[var(--ink)] outline-none shadow-[inset_0_-1px_0_0_var(--field-line)] transition-shadow placeholder:text-[var(--ink-3)] aria-[invalid=true]:shadow-[inset_0_-2px_0_0_var(--danger-ink)] focus:shadow-[inset_0_-2px_0_0_var(--primary)] disabled:text-[var(--ink-3)] disabled:shadow-[inset_0_-1px_0_0_var(--line)]';
 
-/** 여러 줄 입력. 높이는 내용에 따라 자란다. */
+/** 여러 줄 입력. 높이는 내용에 따라 자란다. 경계는 입력칸과 같이 아래 한 줄이다. */
 export const textareaClass =
-  'w-full min-w-0 resize-none rounded-[var(--r-control)] border border-[var(--field-line)] bg-[var(--surface)] px-3.5 py-2.5 text-[16px] leading-6 text-[var(--ink)] outline-none transition-[border-color] placeholder:text-[var(--ink-3)] focus:border-[var(--primary)]';
+  'field-underline w-full min-w-0 resize-none rounded-none border-0 bg-transparent px-0.5 py-2.5 text-[16px] leading-6 text-[var(--ink)] outline-none shadow-[inset_0_-1px_0_0_var(--field-line)] transition-shadow placeholder:text-[var(--ink-3)] focus:shadow-[inset_0_-2px_0_0_var(--primary)]';
 
 const btnBase =
   'inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--r-pill)] px-5 text-[15px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
@@ -228,3 +245,86 @@ export const btn = {
 /** 아이콘 전용 버튼 — 원형, 터치 영역 44px, 아이콘 자체는 20px(§7). */
 export const iconBtn =
   'grid size-11 shrink-0 place-items-center rounded-full text-[var(--ink-2)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)] disabled:opacity-40';
+
+/* ------------------------------------------------------------------ 아이콘 */
+
+/**
+ * 동작 아이콘 — ADR-023.
+ *
+ * 삭제·수정처럼 **모두가 같은 그림으로 알고 있는 동작**은 낱말 대신 아이콘으로
+ * 둔다. 목록의 줄마다 '이름 변경'·'목록에서 지우기' 같은 글자 버튼이 늘어서면
+ * 정작 읽어야 할 이름과 금액이 밀린다(ADR-018 이 말한 것과 같은 문제다).
+ *
+ * 다만 아이콘은 스스로 이름이 없다. 그래서 아이콘 버튼은 반드시
+ * `IconButton` 을 거치게 하고, 거기서 `aria-label` 과 `title` 을 강제한다 —
+ * 화면 낭독기에는 이름이 남고, 마우스에는 풍선말이 뜬다.
+ */
+const ICON_PATHS = {
+  /** 삭제 — 휴지통. */
+  trash: 'M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l.8 12.1a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10.5 11v6M13.5 11v6',
+  /** 수정 — 연필. */
+  pencil: 'M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4 16.5V20zM14.5 6.5l3.5 3.5',
+  /** 보관 — 뚜껑 덮은 상자. 지우는 것이 아니라 넣어 두는 것이다. */
+  archive: 'M3.5 5.5h17v3.5h-17zM5 9v9a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V9M10 13h4',
+  /** 멈춤. */
+  pause: 'M9.5 6v12M14.5 6v12',
+  /** 다시 켜기. */
+  play: 'M8.5 5.5v13l10.5-6.5z',
+  /** 저장·확인 — 체크. */
+  check: 'M4.5 12.5l5 5 10-11',
+  /** 더하기. */
+  plus: 'M12 5v14M5 12h14',
+  /** 닫기. */
+  close: 'M6 6l12 12M18 6L6 18',
+} as const;
+
+export type IconName = keyof typeof ICON_PATHS;
+
+export function Icon({ name, className = 'size-5' }: { name: IconName; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden focusable="false">
+      <path
+        d={ICON_PATHS[name]}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * 아이콘 버튼 — 이름 없는 버튼을 만들 수 없게 `label` 을 필수로 둔다.
+ * tone 은 셋뿐이다: 중립 · 되돌릴 수 없는 것(danger) · 주 동작(accent).
+ */
+export function IconButton({
+  icon,
+  label,
+  tone = 'neutral',
+  className = '',
+  ...rest
+}: {
+  icon: IconName;
+  /** 화면 낭독기에 읽히는 이름이자 마우스 풍선말. 빈 문자열을 넣지 않는다. */
+  label: string;
+  tone?: 'neutral' | 'danger' | 'accent';
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'title'>) {
+  const skin =
+    tone === 'danger'
+      ? 'text-[var(--danger-ink)] hover:bg-[var(--warn-bg)]'
+      : tone === 'accent'
+        ? 'bg-[var(--accent-container)] text-[var(--on-accent-container)] hover:brightness-97'
+        : 'text-[var(--ink-2)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]';
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...rest}
+      className={`grid size-11 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${skin} ${className}`}
+    >
+      <Icon name={icon} />
+    </button>
+  );
+}

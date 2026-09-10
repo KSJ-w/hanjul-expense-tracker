@@ -5,6 +5,8 @@ import { queryRecords } from '@/lib/repo/records';
 import { parseISODate } from '@/lib/domain/date';
 import type { Direction, RecordQuery } from '@/lib/domain/types';
 import { btn, CategoryChip, EmptyNote, Field, inputClass, Money, Panel, SectionTitle } from '../ui/atoms';
+import { Select } from '../ui/Select';
+import { AmountInput } from '../ui/AmountInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,35 +104,45 @@ export default async function HistoryPage({
             <Field label="종료일" htmlFor="f-to">
               <input id="f-to" type="date" name="to" defaultValue={sp.to ?? ''} className={inputClass} />
             </Field>
+            {/*
+             * 이 화면은 서버 컴포넌트의 GET 폼이다. `Select` 는 값을 숨은 input 으로
+             * 함께 보내므로 폼의 동작 방식은 그대로다(ADR-025).
+             */}
             <Field label="수입과 지출" htmlFor="f-dir">
-              <select id="f-dir" name="dir" defaultValue={sp.dir ?? ''} className={inputClass}>
-                <option value="">전체</option>
-                <option value="expense">지출</option>
-                <option value="income">수입</option>
-              </select>
+              <Select
+                id="f-dir"
+                name="dir"
+                defaultValue={sp.dir ?? ''}
+                placeholder="전체"
+                options={[
+                  { value: '', label: '전체' },
+                  { value: 'expense', label: '지출' },
+                  { value: 'income', label: '수입' },
+                ]}
+              />
             </Field>
             <Field label="분류" htmlFor="f-cat">
-              <select id="f-cat" name="cat" defaultValue={sp.cat ?? ''} className={inputClass}>
-                <option value="">전체</option>
-                <optgroup label="지출">
-                  {categories
-                    .filter((c) => c.direction === 'expense')
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </optgroup>
-                <optgroup label="수입">
-                  {categories
-                    .filter((c) => c.direction === 'income')
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </optgroup>
-              </select>
+              <Select
+                id="f-cat"
+                name="cat"
+                defaultValue={sp.cat ?? ''}
+                placeholder="전체"
+                options={[{ value: '', label: '전체' }]}
+                groups={[
+                  {
+                    label: '지출',
+                    options: categories
+                      .filter((c) => c.direction === 'expense')
+                      .map((c) => ({ value: c.id, label: c.name })),
+                  },
+                  {
+                    label: '수입',
+                    options: categories
+                      .filter((c) => c.direction === 'income')
+                      .map((c) => ({ value: c.id, label: c.name })),
+                  },
+                ]}
+              />
             </Field>
           </div>
 
@@ -138,23 +150,12 @@ export default async function HistoryPage({
           <details className="rounded-[var(--r-control)] bg-[var(--surface-2)] px-3 py-2">
             <summary className="cursor-pointer text-[15px] text-[var(--ink-2)]">상세 필터</summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* 서버는 숫자 아닌 글자를 걷어내고 읽으므로 자릿점이 찍힌 채 보내도 된다. */}
               <Field label="최소 금액" htmlFor="f-min" error={amountError}>
-                <input
-                  id="f-min"
-                  name="min"
-                  inputMode="numeric"
-                  defaultValue={sp.min ?? ''}
-                  className={`${inputClass} tabular`}
-                />
+                <AmountInput id="f-min" name="min" defaultValue={sp.min ?? ''} aria-invalid={Boolean(amountError)} />
               </Field>
               <Field label="최대 금액" htmlFor="f-max">
-                <input
-                  id="f-max"
-                  name="max"
-                  inputMode="numeric"
-                  defaultValue={sp.max ?? ''}
-                  className={`${inputClass} tabular`}
-                />
+                <AmountInput id="f-max" name="max" defaultValue={sp.max ?? ''} />
               </Field>
             </div>
           </details>
@@ -241,8 +242,15 @@ export default async function HistoryPage({
                           className="flex flex-col gap-1 rounded-[var(--r-control)] px-2 py-3 transition-colors hover:bg-[var(--surface-2)]"
                         >
                           <span className="flex items-baseline justify-between gap-3">
-                            <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--ink)]">
-                              {r.note || '내용 없음'}
+                            {/* 내용이 없으면 자리만 지키는 '-' 를 흐리게 둔다(ADR-028). */}
+                            <span
+                              className={[
+                                'min-w-0 flex-1 truncate text-[15px]',
+                                r.note ? 'text-[var(--ink)]' : 'text-[var(--ink-3)]',
+                              ].join(' ')}
+                              aria-label={r.note ? undefined : '내용 없음'}
+                            >
+                              {r.note || '-'}
                             </span>
                             <Money amount={r.amount} direction={r.direction} />
                           </span>

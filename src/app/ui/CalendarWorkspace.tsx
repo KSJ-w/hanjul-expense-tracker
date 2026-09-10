@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Category, RecordEntry } from '@/lib/domain/types';
 import { addDays, lastDayOfMonth, parseISODate } from '@/lib/domain/date';
-import { deleteRecordAction, restoreRecordAction, updateRecordAction } from '../actions';
+import { holidayName } from '@/lib/domain/holiday';
+import { restoreRecordAction } from '../actions';
 import { Dialog } from './Dialog';
-import { NewRecordDialog } from './NewRecordDialog';
-import { btn, CategoryChip, EmptyNote, Field, inputClass, Money, StatusMessage } from './atoms';
+import { RecordDialog } from './RecordDialog';
+import { btn, CategoryChip, Money } from './atoms';
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -89,7 +90,6 @@ export function CalendarWorkspace({
   const cellCount = Math.ceil((firstDow + lastDayOfMonth(year, month)) / 7) * 7;
   const cells = Array.from({ length: cellCount }, (_, i) => addDays(gridStart, i));
 
-  const monthCount = cells.filter((d) => d.slice(0, 7) === monthKey).reduce((s, d) => s + (byDate.get(d)?.length ?? 0), 0);
 
   function choose(date: string) {
     // 옆 달 날짜를 누르면 그 달로 옮기고 그 날짜의 상세를 연다(§9).
@@ -173,14 +173,32 @@ function DayCell({
   const expense = list.filter((r) => r.direction === 'expense').reduce((s, r) => s + r.amount, 0);
   const income = list.filter((r) => r.direction === 'income').reduce((s, r) => s + r.amount, 0);
 
+  /*
+   * 쉬는 날 — FR-VIEW-12, ADR-022.
+   *
+   * 일요일과 관공서 공휴일의 날짜 숫자를 붉게 적는다. 달력에서 붉은 숫자가
+   * 휴일이라는 것은 한국에서 따로 배울 것이 없는 약속이다.
+   *
+   * **다른 달의 날짜에는 붉은색을 주지 않는다.** 그 칸이 먼저 말해야 하는 것은
+   * '이 달이 아니다'이고, 흐리게 두는 것이 그 뜻이다. 두 뜻을 한 숫자에 겹쳐
+   * 담으면 어느 쪽도 또렷하지 않다.
+   *
+   * 색만으로 뜻을 전하지 않는다(ADR-020) — 공휴일은 이름을 함께 적고, 일요일은
+   * 격자의 첫 칸이라는 자리가 같은 말을 한다. 접근성 이름에도 남긴다.
+   */
+  const holiday = inMonth ? holidayName(date) : null;
+  const isSunday = parseISODate(date).getDay() === 0;
+  const restDay = inMonth && (isSunday || holiday !== null);
+
   // 접근성 이름에는 **정확한 원 단위**를 넣는다. 화면의 요약은 반올림이다(§12).
   const parts = [krDate(date)];
+  if (holiday) parts.push(`공휴일 ${holiday}`);
   if (isToday) parts.push('오늘');
   if (isSelected) parts.push('선택한 날짜');
   if (list.length > 0) {
     parts.push(`기록 ${list.length}건`);
-    if (expense > 0) parts.push(`지출 ${expense.toLocaleString('ko-KR')}원`);
     if (income > 0) parts.push(`수입 ${income.toLocaleString('ko-KR')}원`);
+    if (expense > 0) parts.push(`지출 ${expense.toLocaleString('ko-KR')}원`);
   } else {
     parts.push('저장한 기록 없음');
   }
@@ -204,35 +222,46 @@ function DayCell({
         isSelected ? 'ring-2 ring-inset ring-[var(--primary)]' : 'hover:bg-[var(--surface-2)]',
       ].join(' ')}
     >
+      {/*
+       * 오늘 표시가 휴일색보다 앞선다 — 파랑은 '지금 있는 곳'이고 그것이 먼저
+       * 필요하다(ADR-017). 오늘이 휴일이면 아래의 공휴일 이름이 그 뜻을 잇는다.
+       */}
       <span
         className={[
           'inline-grid size-6 shrink-0 place-items-center rounded-full text-[12px] sm:text-[13px]',
           isToday
             ? 'bg-[var(--primary)] font-semibold text-[var(--primary-ink)]'
-            : inMonth
-              ? 'text-[var(--ink)]'
-              : 'text-[var(--ink-3)]',
+            : restDay
+              ? 'font-semibold text-[var(--holiday)]'
+              : inMonth
+                ? 'text-[var(--ink)]'
+                : 'text-[var(--ink-3)]',
         ].join(' ')}
       >
         {Number(date.slice(8, 10))}
       </span>
 
       {/*
+       * 공휴일의 이름. 색을 보지 못해도 무슨 날인지 읽히게 하는 통로다.
+       * 좁은 화면에서는 줄이 넘칠 수 있으므로 한 줄로 자른다 — 잘려도 남는 것이
+       * 이름의 앞머리라 뜻이 남는다. 금액과 달리 이름은 잘라도 값이 되지 않는다.
+       */}
+      {holiday ? (
+        <span className="w-full truncate text-[9px] font-medium text-[var(--holiday)] min-[360px]:text-[10px] sm:text-[11px]">
+          {holiday}
+        </span>
+      ) : null}
+
+      {/*
        * 일별 금액 요약 — 좁은 화면에서도 남긴다(v2 R07).
        * 좁을수록 더 짧은 단위를 쓴다. 잘라내지 않는다.
+       *
+       * **수입이 먼저다.** 들어온 것을 보고 나간 것을 보는 차례이며,
+       * 접근성 이름의 차례도 이것과 같게 둔다 — 눈으로 읽는 순서와 귀로 듣는
+       * 순서가 다르면 같은 칸을 두 가지로 기억하게 된다.
        */}
       {list.length > 0 ? (
         <span className="flex w-full min-w-0 flex-col gap-px">
-          {expense > 0 ? (
-            <>
-              <span className="tabular truncate text-[10px] font-semibold text-[var(--dir-expense)] min-[360px]:text-[11px] sm:hidden">
-                −{shortAmount(expense, true)}
-              </span>
-              <span className="tabular hidden truncate text-[13px] font-semibold text-[var(--dir-expense)] sm:inline">
-                −{shortAmount(expense)}
-              </span>
-            </>
-          ) : null}
           {income > 0 ? (
             <>
               <span className="tabular truncate text-[10px] font-semibold text-[var(--dir-income)] min-[360px]:text-[11px] sm:hidden">
@@ -240,6 +269,16 @@ function DayCell({
               </span>
               <span className="tabular hidden truncate text-[13px] font-semibold text-[var(--dir-income)] sm:inline">
                 +{shortAmount(income)}
+              </span>
+            </>
+          ) : null}
+          {expense > 0 ? (
+            <>
+              <span className="tabular truncate text-[10px] font-semibold text-[var(--dir-expense)] min-[360px]:text-[11px] sm:hidden">
+                −{shortAmount(expense, true)}
+              </span>
+              <span className="tabular hidden truncate text-[13px] font-semibold text-[var(--dir-expense)] sm:inline">
+                −{shortAmount(expense)}
               </span>
             </>
           ) : null}
@@ -278,7 +317,7 @@ function DayDetailDialog({
   highlightRecordId: string | null;
   onClose: () => void;
 }) {
-  const [open, setOpen] = useState<RecordEntry | null>(null);
+  const [editing, setEditing] = useState<RecordEntry | null>(null);
   const [adding, setAdding] = useState(false);
   const [undo, setUndo] = useState<RecordEntry | null>(null);
   const [undoPending, startUndo] = useTransition();
@@ -287,87 +326,114 @@ function DayDetailDialog({
 
   const expense = records.filter((r) => r.direction === 'expense').reduce((s, r) => s + r.amount, 0);
   const income = records.filter((r) => r.direction === 'income').reduce((s, r) => s + r.amount, 0);
+  const holiday = holidayName(date);
 
   return (
     <>
       <Dialog
-        open={open === null && !adding}
+        open={editing === null && !adding}
         onClose={onClose}
         title={shortDate(date)}
-        subtitle={`${records.length}건`}
+        /*
+         * 부제는 '2건' 같은 세어 놓은 수가 아니다 — 목록이 바로 아래에 있고
+         * 세는 일은 눈이 한다. 여기에 둘 값이 있다면 그날이 무슨 날인가다.
+         */
+        subtitle={holiday ?? undefined}
         width="md"
         footer={
           <>
             <span className="flex-1" />
-            {/* 큰 채움 버튼은 창에서 가장 튀는 것이 되어 버린다. 아이콘 하나로 둔다. */}
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              aria-label="이 날짜에 기록"
-              title="이 날짜에 기록"
-              className="grid size-11 place-items-center rounded-full bg-[var(--accent-container)] text-[var(--on-accent-container)] transition-colors hover:brightness-97"
-            >
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
-                <path
-                  d="M12 5v14M5 12h14"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+            {/*
+             * 창 바닥의 동작은 낱말이다(ADR-027). 아이콘은 자리가 좁은 목록 줄에서만
+             * 쓴다 — 바닥에는 낱말을 넣을 자리가 있고, 낱말이 있으면 뜻이 추측이
+             * 되지 않는다. 진한 채움 대신 옅은 면을 쓰는 것은 그대로다.
+             */}
+            <button type="button" className={btn.soft} onClick={() => setAdding(true)}>
+              기록 추가
             </button>
           </>
         }
       >
-        {/* 상세의 합계는 요약이 아니라 정확한 원 단위다(§12). */}
-        <dl className="mb-4 grid grid-cols-3 gap-2 rounded-[var(--r-control)] bg-[var(--surface-2)] px-4 py-3">
-          <div>
-            <dt className="text-[13px] text-[var(--ink-2)]">지출</dt>
-            <dd className="mt-0.5">
-              <Money
-                amount={expense}
-                direction={expense === 0 ? undefined : 'expense'}
-                signed={false}
-                className="text-[15px]"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[13px] text-[var(--ink-2)]">수입</dt>
-            <dd className="mt-0.5">
-              <Money
-                amount={income}
-                direction={income === 0 ? undefined : 'income'}
-                signed={false}
-                className="text-[15px]"
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[13px] text-[var(--ink-2)]">합계</dt>
-            <dd className="tabular mt-0.5">
-              <Money amount={income - expense} className="text-[15px]" />
-            </dd>
-          </div>
+        {/*
+         * 지출·수입·합계 — 셋은 **같은 넓이의 세 칸**을 나눠 갖는다(§12).
+         *
+         * `grid-cols-3` 은 `minmax(0,1fr)` 셋이므로 값이 길어져도 칸이 밀리지
+         * 않는다. 대신 칸을 넘칠 수 있어서, 좁은 화면에서는 글자를 한 단계
+         * 줄여 자리를 만든다 — 금액은 말줄임하지 않는다(ADR-020).
+         * 세로 실선을 둬서 셋이 대등하다는 것이 눈에도 보이게 한다.
+         */}
+        <dl className="mb-4 grid grid-cols-3 rounded-[var(--r-control)] bg-[var(--surface-2)] py-3">
+          {/*
+           * 차례는 **수입 · 지출 · 합계**다. 달력 칸과 같은 차례여야 한다 —
+           * 같은 하루를 두 곳에서 다른 순서로 보여 주면 눈이 매번 다시 찾는다.
+           * 합계는 앞의 둘에서 나오는 값이므로 마지막이다.
+           */}
+          {(
+            [
+              { label: '수입', amount: income, direction: 'income' as const, signed: false },
+              { label: '지출', amount: expense, direction: 'expense' as const, signed: false },
+              { label: '합계', amount: income - expense, direction: undefined, signed: true },
+            ]
+          ).map((col, i) => (
+            <div
+              key={col.label}
+              className={[
+                'min-w-0 px-1.5 text-center sm:px-4',
+                /* 실선은 --line 을 쓴다. --hairline 은 surface-2 위에서 보이지 않는다. */
+                i > 0 ? 'border-l border-[var(--line)]' : '',
+              ].join(' ')}
+            >
+              <dt className="text-[13px] text-[var(--ink-2)]">{col.label}</dt>
+              <dd className="mt-0.5">
+                <Money
+                  amount={col.amount}
+                  direction={col.amount === 0 ? undefined : col.direction}
+                  signed={col.signed}
+                  className="text-[14px] sm:text-[15px]"
+                />
+              </dd>
+            </div>
+          ))}
         </dl>
 
         {/*
-         * 창의 크기를 처음부터 잡아 둔다. 기록 수에 따라 늘어나면 같은 자리를
-         * 눌러도 매번 다른 크기의 창이 뜨고, 날짜를 옮길 때마다 흔들린다.
+         * 창의 크기를 **고정한다** — ADR-028.
+         *
+         * 전에는 최소 높이만 줬는데, 그러면 기록이 다섯을 넘는 날에는 창이 그만큼
+         * 자란다. 같은 자리를 눌러도 매번 다른 크기의 창이 뜨면 다음에 누를 곳의
+         * 위치가 날마다 바뀐다 — 최소 높이를 준 애초의 이유가 그것이었다(ADR-021).
+         *
+         * 다섯 줄까지 보이고 그보다 많으면 **목록 안에서 굴린다.**
+         * 줄 하나가 48px 이므로 48×5 + 줄 사이 실선 4개 = 244px 이다.
          */}
-        <div className="min-h-[300px]">
-        {records.length === 0 ? (
-          <EmptyNote />
-        ) : (
+        <div className="h-[244px] overflow-y-auto">
+        {/*
+         * 기록이 없는 날에는 **아무 글자도 두지 않는다**(ADR-029).
+         *
+         * `FR-VIEW-07` 이 금지하는 것은 "이 기간에 거래가 없었다"고 **단정하는
+         * 표현**이다. 비워 두는 것은 아무것도 단정하지 않으므로 그 금지에 걸리지
+         * 않는다. 오히려 이 창에서는 빈 자리가 더 정확하다 — 창의 높이가 고정되어
+         * 있어(ADR-028) 빈 자리 자체가 "여기에 들어올 것이 없다"를 보여 주고,
+         * 그 위의 합계가 이미 0원이라고 말한다. 같은 말을 세 번 하지 않는다.
+         *
+         * 내역 화면은 다르다. 거기서는 사용자가 **조건을 걸어 찾은** 결과가 0건이라
+         * 왜 비었는지를 말해 줘야 한다 — 그래서 `EmptyNote` 가 그대로 남아 있다.
+         */}
+        {records.length === 0 ? null : (
           <ul className="flex flex-col">
             {records.map((r) => {
               const cat = categories.find((c) => c.id === r.categoryId);
               return (
                 <li key={r.id} className="border-b border-[var(--hairline)] last:border-0">
+                  {/*
+                   * 줄을 누르는 것은 **고치려는 것**이다(ADR-024). 읽기만 하는
+                   * 화면을 한 겹 더 두지 않는다 — 아래에 이미 보이는 값을 다시
+                   * 보여 주려고 누름을 한 번 더 받지 않는다.
+                   */}
                   <button
                     type="button"
-                    onClick={() => setOpen(r)}
-                    aria-label={`${r.note || '내용 없음'} 거래 상세 열기`}
+                    onClick={() => setEditing(r)}
+                    aria-label={`${r.note || '내용 없음'} 기록 고치기`}
                     className={[
                       'flex w-full flex-col rounded-[var(--r-control)] px-3 py-3 text-left transition-colors hover:bg-[var(--surface-2)]',
                       r.id === highlightRecordId ? 'bg-[var(--accent-container)]' : '',
@@ -380,8 +446,19 @@ function DayDetailDialog({
                      */}
                     <span className="flex items-center gap-2">
                       <CategoryChip name={cat ? cat.name : '미분류'} />
-                      <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--ink)]">
-                        {r.note || '내용 없음'}
+                      {/*
+                       * 적은 내용이 없으면 '내용 없음'이라고 쓰지 않는다 — 없다는
+                       * 사실을 낱말로 채우면 있는 줄보다 오히려 눈에 걸린다.
+                       * 자리만 지키는 '-' 를 흐리게 둔다. 낭독기에는 위의
+                       * `aria-label` 이 '내용 없음'으로 말한다.
+                       */}
+                      <span
+                        className={[
+                          'min-w-0 flex-1 truncate text-[15px]',
+                          r.note ? 'text-[var(--ink)]' : 'text-[var(--ink-3)]',
+                        ].join(' ')}
+                      >
+                        {r.note || '-'}
                       </span>
                       {r.imageId ? (
                         <span className="shrink-0 text-[13px] text-[var(--ink-2)]">영수증</span>
@@ -422,209 +499,22 @@ function DayDetailDialog({
         ) : null}
       </Dialog>
 
-      {open ? (
-        <TransactionDialog
-          record={open}
+      {editing ? (
+        <RecordDialog
+          date={date}
+          record={editing}
           categories={categories}
-          onClose={() => setOpen(null)}
+          onClose={() => setEditing(null)}
           onDeleted={(r) => {
             setUndo(r);
-            setOpen(null);
+            setEditing(null);
           }}
         />
       ) : null}
 
       {adding ? (
-        <NewRecordDialog date={date} categories={categories} onClose={() => setAdding(false)} />
+        <RecordDialog date={date} categories={categories} onClose={() => setAdding(false)} />
       ) : null}
     </>
-  );
-}
-
-/* --------------------------------------------------------------- 거래 상세 */
-
-/**
- * 거래 상세 — 줄을 누르면 먼저 **읽는 화면**이 열린다.
- * 누르자마자 모든 칸이 편집 폼으로 바뀌면 사용자가 무엇을 눌렀는지 놀란다.
- */
-function TransactionDialog({
-  record,
-  categories,
-  onClose,
-  onDeleted,
-}: {
-  record: RecordEntry;
-  categories: Category[];
-  onClose: () => void;
-  onDeleted: (r: RecordEntry) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const [amount, setAmount] = useState(String(record.amount));
-  const [categoryId, setCategoryId] = useState(record.categoryId ?? '');
-  const [note, setNote] = useState(record.note);
-  const [date, setDate] = useState(record.date);
-
-  const cat = categories.find((c) => c.id === record.categoryId);
-  const pool = categories.filter((c) => c.direction === record.direction);
-  const amountValue = Number(amount.replace(/[^\d]/g, ''));
-  const amountError =
-    amount.trim() === '' ? '금액을 적어 주세요.' : amountValue <= 0 ? '0보다 큰 금액을 적어 주세요.' : null;
-
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title={editing ? '기록 수정' : '거래 상세'}
-      subtitle={krDate(record.date)}
-      width="md"
-      footer={
-        editing ? (
-          <>
-            <span className="flex-1" />
-            <button
-              type="button"
-              className={btn.ghost}
-              disabled={pending}
-              onClick={() => {
-                setEditing(false);
-                setError(null);
-              }}
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              className={btn.primary}
-              disabled={pending || amountError !== null}
-              onClick={() =>
-                startTransition(async () => {
-                  setError(null);
-                  await updateRecordAction(record.id, {
-                    date,
-                    amount: amountValue,
-                    categoryId: categoryId || null,
-                    note,
-                  });
-                  setEditing(false);
-                })
-              }
-            >
-              {pending ? '저장 중' : '저장'}
-            </button>
-          </>
-        ) : (
-          <>
-            {/* 삭제는 저장·수정과 충분히 떨어뜨린다. 붉은 채움으로 강조하지 않는다. */}
-            <button
-              type="button"
-              className={btn.danger}
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  const r = await deleteRecordAction(record.id);
-                  if (r.ok) onDeleted(record);
-                  else setError('삭제하지 못했어요.');
-                })
-              }
-            >
-              삭제
-            </button>
-            <span className="flex-1" />
-            <button type="button" className={btn.primary} onClick={() => setEditing(true)}>
-              수정
-            </button>
-          </>
-        )
-      }
-    >
-      {error ? (
-        <div className="mb-3">
-          <StatusMessage tone="error">{error}</StatusMessage>
-        </div>
-      ) : null}
-
-      {editing ? (
-        <div className="flex flex-col gap-3">
-          <Field label="금액" htmlFor="edit-amount" error={amountError ?? undefined}>
-            <input
-              id="edit-amount"
-              autoFocus
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              aria-invalid={amountError !== null}
-              className={`${inputClass} tabular`}
-            />
-          </Field>
-          <Field label="날짜" htmlFor="edit-date">
-            <input
-              id="edit-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="분류" htmlFor="edit-category">
-            <select
-              id="edit-category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">미분류</option>
-              {pool.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="내용" htmlFor="edit-note">
-            <input id="edit-note" value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
-          </Field>
-          <p className="text-[13px] text-[var(--ink-2)]">
-            수입과 지출은 이 화면에서 바꾸지 않아요. 방향을 바꾸려면 지우고 다시 기록해 주세요.
-          </p>
-        </div>
-      ) : (
-        <dl className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[13px] text-[var(--ink-2)]">
-              {record.direction === 'income' ? '수입' : '지출'}
-            </dt>
-            <dd>
-              <Money amount={record.amount} direction={record.direction} className="text-[24px]" />
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[13px] text-[var(--ink-2)]">분류</dt>
-            <dd className="text-[15px]">{cat ? cat.name : '미분류'}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[13px] text-[var(--ink-2)]">내용</dt>
-            <dd className="min-w-0 flex-1 text-right text-[15px]">{record.note || '내용 없음'}</dd>
-          </div>
-          {record.imageId ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-[13px] text-[var(--ink-2)]">영수증</dt>
-              <dd>
-                <a
-                  href={`/api/image/${record.imageId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[15px] text-[var(--primary)] underline"
-                >
-                  이미지 열기
-                </a>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      )}
-    </Dialog>
   );
 }

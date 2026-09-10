@@ -3,9 +3,9 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 역할 | 시험 기준서(TC) — `ENTRY` 컴포넌트의 요구가 충족되었음을 어떻게 증명하는가 |
-| 버전 | 0.6 |
+| 버전 | 0.7 |
 | 작성일 | 2026-09-08 |
-| 기준 문서 | [SRS.md](../srs/SRS.md) v0.6 |
+| 기준 문서 | [SRS.md](../srs/SRS.md) v0.7 |
 | 테스트 코드 위치 | `test/entry.*.test.ts` |
 | 상태 | Draft |
 
@@ -77,6 +77,7 @@
 | TC-ENTRY-27 | FR-ENTRY-11 | 지운 기록이 없다 | ① 되살리기를 시도한다 | 되살릴 대상이 없다고 알린다 | 결과가 실패이고 **그리고** 다른 기록의 수가 그대로면 Pass |
 | TC-ENTRY-28 | FR-ENTRY-14 | 외부 수단이 응답하지 않는 상태 | ① 직접 입력으로 기록을 만든다 | 기록이 만들어진다 | 결과가 성공이면 Pass |
 | TC-ENTRY-29 | FR-ENTRY-14, NFR-ENTRY-03 | 외부 수단이 실패하도록 둔 상태 | ① 문장을 해석한다 | 기기 안 수단이 이어받고 실패 사실과 **그 사유**가 함께 전달된다 | 후보가 1건 이상이고 **그리고** degraded 가 true 이며 **그리고** failure 가 비어 있지 않고 **그리고** 사람이 읽을 수 있는 사유(failureDetail)가 비어 있지 않으면 Pass |
+| TC-ENTRY-47 | FR-ENTRY-08, FR-ENTRY-09 | 사람이 금액을 적고 있는 중 | ① 적힌 글자에 자릿점을 넣는다 ② 자릿수가 세 자리를 넘는 경우·넘지 않는 경우·앞자리가 0 인 경우·비어 있는 경우·숫자가 아닌 글자가 섞인 경우를 본다 ③ 매우 큰 자릿수를 넣는다 | 세 자리마다 자릿점이 찍히고, 앞자리 0 은 지워지며, 숫자가 아닌 글자는 걷힌다. 자릿수가 커져도 값이 흔들리지 않는다 | 여섯 경우가 모두 기대와 같고 **그리고** 17자리 값의 숫자가 하나도 바뀌지 않으면 Pass |
 
 ### 3.4 반복 항목과 근거 이미지 (FR-ENTRY-12, 13)
 
@@ -141,8 +142,8 @@
 | FR-ENTRY-05 | TC-ENTRY-12, 13, 14, 33 | `test/entry.confirm.test.ts` |
 | FR-ENTRY-06 | TC-ENTRY-15, 16 | `test/entry.confirm.test.ts` |
 | FR-ENTRY-07 | TC-ENTRY-17, 18, 19 | `test/entry.confirm.test.ts` |
-| FR-ENTRY-08 | TC-ENTRY-20, 21 | `test/entry.records.test.ts` |
-| FR-ENTRY-09 | TC-ENTRY-22, 23 | `test/entry.records.test.ts` |
+| FR-ENTRY-08 | TC-ENTRY-20, 21, 47 | `test/entry.records.test.ts` |
+| FR-ENTRY-09 | TC-ENTRY-22, 23, 47 | `test/entry.records.test.ts` |
 | FR-ENTRY-10 | TC-ENTRY-24, 25 | `test/entry.records.test.ts` |
 | FR-ENTRY-11 | TC-ENTRY-26, 27 | `test/entry.records.test.ts` |
 | FR-ENTRY-12 | TC-ENTRY-30, 31, 32, 33 | `test/entry.recurring.test.ts` |
@@ -160,8 +161,8 @@
 | NFR-ENTRY-06 | TC-ENTRY-45 | 시연 유형(자동화 밖) |
 
 **검수 합계** — 시험 유형 요구 21개 / TC 가 붙은 요구 21개 / 미커버 0개
-**검수 합계** — TC 46개(01~46) / 검증 요구가 빈 행 0 / 번호 빠짐·중복 0
-**검수 합계** — 자동화 대상 41개 / 자동화 밖 5개(합격값 미승인 2 — TC-ENTRY-41·42, 검사 2 — TC-ENTRY-43·44, 시연 1 — TC-ENTRY-45)
+**검수 합계** — TC 47개(01~47) / 검증 요구가 빈 행 0 / 번호 빠짐·중복 0
+**검수 합계** — 자동화 대상 42개 / 자동화 밖 5개(합격값 미승인 2 — TC-ENTRY-41·42, 검사 2 — TC-ENTRY-43·44, 시연 1 — TC-ENTRY-45)
 
 ## 7. 변경 이력
 
@@ -173,6 +174,7 @@
 | 0.4 | 2026-09-09 | 기준 문서 SRS v0.4 → v0.5 (TC 변경 없음) | 헤더 |
 | 0.5 | 2026-09-09 | 기준 문서 경로·버전 갱신 — docs/srs/SRS.md v0.6 (TC 변경 없음) | 헤더 |
 | 0.6 | 2026-09-09 | 자동화 대상 합계 정정 — 40/6 → 41/5. 6 은 ENTRY 가 아니라 전체(TC-VIEW-31 포함) 수였고, 괄호 안 내역도 TC-ENTRY-45 를 두 번 세고 있었다. TC 자체는 바뀌지 않았다 | §6 검수 합계 |
+| 0.7 | 2026-09-10 | 기준 문서 SRS v0.6 → v0.7. TC-ENTRY-47 신설 — 금액을 **적는 동안**의 자릿점 계약(ADR-026). 화면의 다른 모든 금액은 자릿점과 함께 보이는데 적는 칸만 맨 숫자였다 | TC-ENTRY-47 |
 
 ## 8. 미결 사항
 

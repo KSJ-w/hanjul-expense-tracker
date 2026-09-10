@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react';
 import type { Category, Direction, RecurringItem } from '@/lib/domain/types';
 import { addRecurringAction, removeRecurringAction, toggleRecurringAction } from '../actions';
-import { btn, Field, inputClass, Money, StatusMessage } from './atoms';
+import { btn, Field, IconButton, inputClass, Money, StatusMessage } from './atoms';
+import { Select } from './Select';
+import { AmountInput } from './AmountInput';
 
 /**
  * 반복 기록 — FR-ENTRY-12, ADR-020.
@@ -37,28 +39,29 @@ export function RecurringManager({
           {items.map((it) => (
             <li
               key={it.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--line)] py-3 last:border-0"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--line)] py-2 last:border-0"
             >
               <span className="min-w-0 flex-1 truncate text-[15px]">{it.name}</span>
               <span className="text-[13px] text-[var(--ink-2)]">매월 {it.anchorDay}일</span>
               <span className="text-[13px] text-[var(--ink-2)]">{it.active ? '켜짐' : '멈춤'}</span>
               <Money amount={it.amount} direction={it.direction} />
-              <button
-                type="button"
-                className={btn.ghost}
+              {/*
+               * 줄의 동작은 아이콘이다(ADR-023). 켜짐·멈춤은 바로 왼쪽에 낱말로
+               * 이미 적혀 있으므로, 버튼은 '무엇으로 바꾸는가'만 그림으로 말한다.
+               */}
+              <IconButton
+                icon={it.active ? 'pause' : 'play'}
+                label={it.active ? `${it.name} 멈추기` : `${it.name} 다시 켜기`}
                 disabled={pending}
                 onClick={() => startTransition(() => toggleRecurringAction(it.id, !it.active))}
-              >
-                {it.active ? '멈추기' : '다시 켜기'}
-              </button>
-              <button
-                type="button"
-                className={btn.ghost}
+              />
+              <IconButton
+                icon="trash"
+                label={`${it.name} 목록에서 지우기`}
+                tone="danger"
                 disabled={pending}
                 onClick={() => startTransition(() => removeRecurringAction(it.id))}
-              >
-                목록에서 지우기
-              </button>
+              />
             </li>
           ))}
         </ul>
@@ -86,42 +89,30 @@ export function RecurringManager({
               />
             </Field>
             <Field label="금액" htmlFor="rec-amount">
-              <input
-                id="rec-amount"
-                inputMode="numeric"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className={`${inputClass} tabular`}
-              />
+              <AmountInput id="rec-amount" value={amount} onChange={setAmount} />
             </Field>
             <Field label="수입과 지출" htmlFor="rec-direction">
-              <select
+              <Select
                 id="rec-direction"
                 value={direction}
-                onChange={(e) => {
-                  setDirection(e.target.value as Direction);
+                options={[
+                  { value: 'expense', label: '지출' },
+                  { value: 'income', label: '수입' },
+                ]}
+                onChange={(v) => {
+                  setDirection(v as Direction);
                   setCategoryId('');
                 }}
-                className={inputClass}
-              >
-                <option value="expense">지출</option>
-                <option value="income">수입</option>
-              </select>
+              />
             </Field>
             <Field label="분류" htmlFor="rec-category">
-              <select
+              <Select
                 id="rec-category"
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">미분류</option>
-                {pool.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategoryId}
+                placeholder="미분류"
+                options={[{ value: '', label: '미분류' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
+              />
             </Field>
             <Field label="매월 기록일" htmlFor="rec-day" hint="1부터 31까지 정할 수 있어요.">
               <input

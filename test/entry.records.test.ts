@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { freshDb, cleanup, categoryIdByName, TODAY, type TestEnv } from './helpers';
+import { groupDigits } from '@/lib/domain/money';
 import {
   createRecord,
   updateRecord,
@@ -121,5 +122,24 @@ describe('ENTRY 직접 기록과 정정', () => {
     expect(s.hasRecords).toBe(false);
     expect(s.inputAvailable).toBe(true);
     expect(s.emptyStateIsUsable).toBe(true);
+  });
+});
+
+/**
+ * 적는 동안의 금액 표시 — ADR-026.
+ * 화면의 다른 모든 금액은 자릿점과 함께 보이는데 적는 칸만 맨 숫자였다.
+ */
+describe('ENTRY 금액을 적는 동안', () => {
+  it('[TC-ENTRY-47] FR-ENTRY-08, FR-ENTRY-09: 적히는 중인 금액에 세 자리마다 자릿점을 넣는다', () => {
+    expect(groupDigits('1000')).toBe('1,000');
+    expect(groupDigits('999')).toBe('999');
+    expect(groupDigits('')).toBe('');
+    // 앞자리 0 은 사람이 적으려던 값이 아니다.
+    expect(groupDigits('007')).toBe('7');
+    expect(groupDigits('0')).toBe('0');
+    // 숫자가 아닌 글자는 걷어낸다 — 이미 찍힌 자릿점도 포함이다(다시 찍는다).
+    expect(groupDigits('1,234원')).toBe('1,234');
+    // Number 를 거치지 않으므로 자릿수가 커져도 숫자가 흔들리지 않는다.
+    expect(groupDigits('12345678901234567')).toBe('12,345,678,901,234,567');
   });
 });

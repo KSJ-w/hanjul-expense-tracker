@@ -49,6 +49,13 @@
   --dir-expense: #bb3e50;
   --dir-income: #18765a;
 
+  /*
+   * 휴일 — 달력의 **날짜 숫자**에만 쓴다(ADR-022). 거래 방향의 붉은색과
+   * 값을 나눠 둔 이유는 뜻이 다르기 때문이다: 이 붉은색은 "쉬는 날"이지
+   * "돈이 나갔다"가 아니다. 흰 면 5.62 · 선택된 칸(#edecfd) 4.82.
+   */
+  --holiday: #c62828;
+
   /* 오류·경고는 지출과 이름을 나눈다. 값이 같아도 뜻이 다르다. */
   --warn-ink: #805400;
   --warn-bg: #fff4d6;
@@ -122,11 +129,49 @@ body {
   scroll-padding-bottom: calc(var(--dock-height) + var(--dock-bottom) + 24px);
 }
 
-/* 포커스 — 2px 링과 offset. 색만으로 알리지 않으므로 모든 표면에서 같은 모양이다. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+/*
+ * 포커스 — 2px 링과 offset. 색만으로 알리지 않으므로 모든 표면에서 같은 모양이다.
+ *
+ * `<dialog>` 는 뺀다. 창이 열릴 때 포커스를 창 자신에게 옮기는데(Dialog.tsx),
+ * 그것은 사용자가 Tab 으로 간 자리가 아니라 우리가 옮겨 둔 자리라 링을 그릴
+ * 이유가 없다. 이 파일의 규칙은 레이어 밖이라 Tailwind 유틸리티보다 세다 —
+ * 컴포넌트 쪽에 `focus:outline-none` 을 붙여도 이 규칙을 이기지 못한다.
+ */
+:where(a, button, input, select, textarea, [tabindex]):not(dialog):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: var(--r-control);
+}
+
+/*
+ * 밑줄 입력칸은 **줄 자체가 포커스 표시**다(ADR-026).
+ *
+ * 여기에 상자 링을 겹쳐 그리면 방금 없앤 상자가 포커스할 때마다 되살아난다 —
+ * 사용자가 없애 달라고 한 그 상자다. 표시가 사라지는 것이 아니라 **자리를
+ * 옮기는 것**이다: 아래 줄이 강조색으로 굵어지고, 그것이 지금 적는 곳을 말한다.
+ */
+.field-underline:focus-visible,
+.field-underline:focus {
+  outline: none;
+  /*
+   * 곡선도 함께 지운다. 위 포커스 규칙이 `border-radius` 까지 주는데, 밑줄은
+   * `inset` 그림자라 **곡선을 따라 양 끝이 말려 올라간다**(실제로 겪음 —
+   * 금액·내용 칸을 누르면 줄 양쪽 끝이 둥글게 휘었다).
+   */
+  border-radius: 0;
+}
+
+/*
+ * 창 자체의 포커스 링을 끈다.
+ *
+ * 위 규칙에서 `dialog` 를 빼기만 했더니 이번에는 **브라우저 기본 링**이 나왔다 —
+ * 창을 통째로 두르는 진한 테두리로 보인다(실제로 겪음). 규칙에서 빼는 것과
+ * 링을 끄는 것은 다른 일이다. 창은 사용자가 Tab 으로 간 자리가 아니라 우리가
+ * 포커스를 옮겨 둔 자리이므로 표시할 것이 없다.
+ */
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
 }
 
 /*

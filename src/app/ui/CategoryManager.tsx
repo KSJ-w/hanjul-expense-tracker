@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from 'react';
 import type { Category, Direction } from '@/lib/domain/types';
 import { addCategoryAction, deleteCategoryAction, renameCategoryAction } from '../actions';
 import { Dialog } from './Dialog';
-import { btn, Field, inputClass, StatusMessage } from './atoms';
+import { btn, Field, IconButton, inputClass, StatusMessage } from './atoms';
 
 /**
  * 분류 관리 — 원칙 4. 분류는 사용자의 것이다(ADR-020, §16).
@@ -112,21 +112,24 @@ export function CategoryManager({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                /*
+                 * 줄의 동작은 아이콘이다(ADR-023). 줄마다 '이름 변경'·'보관'이
+                 * 글자로 늘어서면 정작 읽어야 할 분류 이름보다 버튼이 넓어진다.
+                 * 이름은 aria-label 과 풍선말에 남는다.
+                 */
+                <div className="flex items-center gap-1">
                   <span className="min-w-0 flex-1 truncate text-[15px]">{c.name}</span>
-                  <button
-                    type="button"
-                    className={btn.ghost}
+                  <IconButton
+                    icon="pencil"
+                    label={`${c.name} 이름 변경`}
                     onClick={() => {
                       setEditingId(c.id);
                       setEditName(c.name);
                     }}
-                  >
-                    이름 변경
-                  </button>
-                  <button
-                    type="button"
-                    className={btn.ghost}
+                  />
+                  <IconButton
+                    icon="archive"
+                    label={`${c.name} 보관`}
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
@@ -138,9 +141,7 @@ export function CategoryManager({
                         }
                       })
                     }
-                  >
-                    보관
-                  </button>
+                  />
                 </div>
               )}
             </li>
@@ -164,9 +165,10 @@ export function CategoryManager({
             <button type="button" className={btn.ghost} onClick={() => setConfirming(null)}>
               취소
             </button>
+            {/* 확인하는 동작은 어느 창에서나 맨 오른쪽에 옅은 면으로 온다(ADR-027). */}
             <button
               type="button"
-              className={btn.primary}
+              className={btn.soft}
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {

@@ -114,3 +114,19 @@ export function formatKrw(n: number): string {
 export function formatSigned(n: number, direction: 'income' | 'expense'): string {
   return `${direction === 'expense' ? '−' : '+'}${n.toLocaleString('ko-KR')}원`;
 }
+
+/**
+ * 적는 동안의 자릿점 — ADR-026.
+ *
+ * 화면의 모든 금액은 자릿점과 함께 보인다(`formatKrw`). 적는 칸만 맨 숫자면
+ * 같은 값이 **적을 때와 보일 때 다른 모양**을 갖고, 자릿수가 많을수록 제대로
+ * 적었는지 세어 봐야 한다.
+ *
+ * `Number` 를 거치지 않는다. 자릿수가 커져도 값이 흔들리지 않아야 하고,
+ * 여기서 다루는 것은 계산할 수가 아니라 **적히는 중인 글자**이기 때문이다.
+ * 앞자리 0 은 지운다 — '007' 은 사람이 적으려던 값이 아니다.
+ */
+export function groupDigits(raw: string): string {
+  const digits = raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  return digits === '' ? '' : digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

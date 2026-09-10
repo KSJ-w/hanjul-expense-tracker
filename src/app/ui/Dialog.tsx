@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 /**
  * 대화상자 — ADR-020, 검수 §13.
@@ -27,6 +27,15 @@ export function Dialog({
    * 이름이 없어지면 안 된다(검수 V12).
    */
   hideHeader = false,
+  /**
+   * 오른쪽 위 닫기(X)를 두지 않는다.
+   *
+   * 고치는 칸이 있는 창은 X 하나로 끝내지 않는다 — X 는 "그냥 닫기"로도
+   * "지금까지 적은 것을 버리기"로도 읽힌다(NN/g, 'Cancel vs Close'). 그런 창은
+   * 바닥에 '취소'를 글자로 두고, 같은 뜻의 닫는 길을 둘 두지 않는다.
+   * Esc 와 backdrop 은 그대로 동작한다.
+   */
+  hideClose = false,
   width = 'md',
 }: {
   open: boolean;
@@ -36,6 +45,7 @@ export function Dialog({
   children: React.ReactNode;
   footer?: React.ReactNode;
   hideHeader?: boolean;
+  hideClose?: boolean;
   /** md 560px = 단일 확인 · lg 640px = 복잡 편집(§13) */
   width?: 'md' | 'lg';
 }) {
@@ -57,6 +67,37 @@ export function Dialog({
   const closingByUs = useRef(false);
   const titleId = useId();
 
+  /*
+   * 바닥과 본문 사이의 실선은 **본문이 실제로 구를 때만** 긋는다.
+   *
+   * 선은 "여기서 잘렸고 아래로 이어진다"는 뜻이다. 이어질 것이 없는데 그으면
+   * 나눌 것을 나누지 않고 자리만 차지한다 — 단추 하나를 위해 창을 가로지르는
+   * 선이 그 단추보다 커진다. 창마다 손으로 정하지 않고 여기서 재서 정한다.
+   */
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [bodyScrolls, setBodyScrolls] = useState(false);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || !open) return;
+    const check = () => setBodyScrolls(el.scrollHeight > el.clientHeight + 1);
+    check();
+    // 내용이 자라도 상자 자체는 격자가 크기를 잡아 안 바뀐다. 안쪽도 함께 본다.
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    /*
+     * 창 크기 변화는 따로도 받는다. ResizeObserver 는 그림이 그려지는 박자에
+     * 실려 오므로, 화면이 그려지지 않는 동안에는 한 번도 오지 않는다.
+     * 창 높이가 줄어 본문이 구르기 시작하는 경우가 정확히 그 경우다.
+     */
+    window.addEventListener('resize', check);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', check);
+    };
+  }, [open, children]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -64,6 +105,16 @@ export function Dialog({
       closingByUs.current = false;
       opener.current = document.activeElement;
       el.showModal();
+      /*
+       * `showModal()` 은 창 안의 **첫 번째 누를 수 있는 것**에 포커스를 준다.
+       * 그것이 대개 오른쪽 위 닫기(X)라, 기록을 저장하고 창이 다시 열리면
+       * 닫기 단추에 포커스 링이 그려진 채로 나타났다 — 방금 한 일과 아무 상관
+       * 없는 곳이 강조된다(실제로 겪음). 창 자체로 포커스를 옮겨 그것을 없앤다.
+       * 포커스는 여전히 창 안에 있으므로 Tab 은 그대로 동작한다.
+       * 안에서 따로 포커스를 잡는 창(기록 창의 금액 칸)은 부모의 effect 가
+       * 이 뒤에 돌아 제 자리를 가져간다 — 자식 effect 가 먼저 돈다.
+       */
+      el.focus();
     }
     if (!open && el.open) {
       closingByUs.current = true;
@@ -91,7 +142,10 @@ export function Dialog({
         // backdrop 클릭으로 닫기. dialog 자신이 대상일 때만 backdrop 이다.
         if (e.target === ref.current) onClose();
       }}
+      tabIndex={-1}
       className={[
+        // 창 자체가 포커스를 받을 때 링을 그리지 않는 것은 globals.css 가 맡는다 —
+        // 그 규칙이 레이어 밖이라 여기에 유틸리티를 붙여도 이기지 못한다.
         // 네이티브 dialog 는 margin:auto 로 가운데에 온다. 리셋이 margin 을 0 으로
         // 만들어 두면 좌상단에 붙는다 — 그래서 m-auto 를 명시한다.
         'm-auto w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] rounded-[var(--r-dialog)] border border-[var(--line)] bg-[var(--surface)] p-0 text-[var(--ink)] shadow-[var(--shadow-modal)]',
@@ -110,16 +164,18 @@ export function Dialog({
           <h2 id={titleId} className="sr-only">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="absolute right-2 top-2 z-10 grid size-11 place-items-center rounded-full text-[var(--ink-2)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
-          >
-            <svg viewBox="0 0 20 20" className="size-5" aria-hidden>
-              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
+          {hideClose ? null : (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="닫기"
+              className="absolute right-2 top-2 z-10 grid size-11 place-items-center rounded-full text-[var(--ink-2)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+            >
+              <svg viewBox="0 0 20 20" className="size-5" aria-hidden>
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4">
@@ -142,10 +198,16 @@ export function Dialog({
         </div>
       )}
 
-      <div className="overflow-y-auto px-5 py-4">{children}</div>
+      <div ref={bodyRef} className="overflow-y-auto px-5 py-4">
+        {children}
+      </div>
 
       {footer ? (
-        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] px-5 py-4">{footer}</div>
+        <div
+          className={`flex flex-wrap items-center gap-2 px-5 py-4 ${bodyScrolls ? 'border-t border-[var(--line)]' : ''}`}
+        >
+          {footer}
+        </div>
       ) : (
         <div />
       )}

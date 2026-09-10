@@ -6,6 +6,8 @@ import { parseISODate } from '@/lib/domain/date';
 import { confirmCandidateAction, discardCandidateAction, patchCandidate } from '../actions';
 import { Dialog } from './Dialog';
 import { btn, Field, inputClass, Money, StatusMessage } from './atoms';
+import { Select } from './Select';
+import { AmountInput, groupDigits } from './AmountInput';
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -22,7 +24,7 @@ function krDate(iso: string): string {
  * **창을 닫는 일과 항목을 버리는 일을 나눈다**(검수 V07):
  *   상단 X      → 창만 닫는다. 후보는 남고 '저장 전 N건'으로 다시 열 수 있다
  *   나중에 확인 → 이 항목을 남기고 다음으로. 하나뿐이면 창이 닫힌다
- *   이 항목 버리기 → 후보를 지운다. 되돌릴 수 없다
+ *   이 항목 버리기 → 후보를 지운다. 되돌릴 수 없다(붉은 글자가 그 뜻이다)
  * 하단에 '닫기'를 또 두지 않는다(재검수 v2 R08).
  */
 export function CandidateReview({
@@ -107,7 +109,7 @@ function CandidateForm({
   const [showRaw, setShowRaw] = useState(false);
 
   const [date, setDate] = useState(candidate.date ?? '');
-  const [amount, setAmount] = useState(candidate.amount != null ? String(candidate.amount) : '');
+  const [amount, setAmount] = useState(candidate.amount != null ? groupDigits(String(candidate.amount)) : '');
   const [direction, setDirection] = useState<Direction | ''>(candidate.direction ?? '');
   const [categoryId, setCategoryId] = useState(candidate.categoryId ?? '');
   const [note, setNote] = useState(candidate.note);
@@ -155,14 +157,11 @@ function CandidateForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="금액" htmlFor="cand-amount" error={errors.amount ?? undefined}>
-          <input
+          <AmountInput
             id="cand-amount"
-            inputMode="numeric"
             value={amount}
-            placeholder="8500"
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={setAmount}
             aria-invalid={errors.amount !== null}
-            className={`${inputClass} tabular`}
           />
         </Field>
 
@@ -178,24 +177,25 @@ function CandidateForm({
         </Field>
 
         <Field label="수입과 지출" htmlFor="cand-direction" error={errors.direction ?? undefined}>
-          <select
+          <Select
             id="cand-direction"
             value={direction}
-            onChange={(e) => {
-              const next = e.target.value as Direction | '';
+            invalid={errors.direction !== null}
+            placeholder="고르지 않음"
+            options={[
+              { value: '', label: '고르지 않음' },
+              { value: 'expense', label: '지출' },
+              { value: 'income', label: '수입' },
+            ]}
+            onChange={(v) => {
+              const next = v as Direction | '';
               setDirection(next);
               if (next && categoryId) {
                 const c = categories.find((x) => x.id === categoryId);
                 if (c && c.direction !== next) setCategoryId('');
               }
             }}
-            aria-invalid={errors.direction !== null}
-            className={inputClass}
-          >
-            <option value="">고르지 않음</option>
-            <option value="expense">지출</option>
-            <option value="income">수입</option>
-          </select>
+          />
         </Field>
 
         <Field
@@ -204,21 +204,15 @@ function CandidateForm({
           error={errors.category ?? undefined}
           hint={direction === '' ? '수입 또는 지출을 먼저 선택하세요.' : undefined}
         >
-          <select
+          <Select
             id="cand-category"
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={setCategoryId}
             disabled={direction === ''}
-            aria-invalid={errors.category !== null}
-            className={inputClass}
-          >
-            <option value="">미분류</option>
-            {pool.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            invalid={errors.category !== null}
+            placeholder="미분류"
+            options={[{ value: '', label: '미분류' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
+          />
         </Field>
       </div>
 
@@ -245,6 +239,15 @@ function CandidateForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-4">
+        {/*
+         * 여기서는 셋 다 낱말이다(ADR-023 의 예외).
+         *
+         * '나중에 확인'은 그림으로 약속된 동작이 아니라 아이콘이 될 수 없고,
+         * 한 바닥에서 하나만 아이콘이면 형태가 무게를 대신 말한다. 이 바닥은
+         * **여러 낱말 중에서 고르는 자리**이므로 낱말로 통일한다.
+         * 셋이 대등하지 않다는 것은 형태가 아니라 색이 말한다 —
+         * 붉은 글자는 되돌릴 수 없다는 뜻, 옅은 청색 면은 이 창의 주 동작이라는 뜻.
+         */}
         <button
           type="button"
           className={btn.danger}
@@ -263,12 +266,13 @@ function CandidateForm({
          * 하단에 '닫기'를 다시 두지 않는다 — 상단 X 가 창 전체를 닫는다(재검수 v2 R08).
          * '나중에 확인'은 이 항목을 남긴다: 여럿이면 다음 항목으로, 하나뿐이면 창이 닫힌다.
          */}
-        <button type="button" className={btn.soft} disabled={pending} onClick={onLater}>
+        <button type="button" className={btn.ghost} disabled={pending} onClick={onLater}>
           나중에 확인
         </button>
+        {/* 저장에 진한 채움 강조색을 쓰지 않는다 — 옅은 면으로 충분하다(ADR-023). */}
         <button
           type="button"
-          className={btn.primary}
+          className={btn.soft}
           disabled={pending || !ready}
           onClick={() =>
             startTransition(async () => {
