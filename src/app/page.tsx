@@ -74,16 +74,17 @@ export default async function CalendarPage({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-[22px] font-bold tracking-tight sm:text-[26px]">{monthLabel}</h1>
         <div className="flex items-center gap-0.5">
-          <Link href={`/?m=${shiftMonth(monthKey, -1)}`} className={iconBtn} aria-label="이전 달">
+          <Link href={`/?m=${shiftMonth(monthKey, -1)}`} scroll={false} className={iconBtn} aria-label="이전 달">
             ‹
           </Link>
           <Link
             href="/"
+            scroll={false}
             className="flex h-11 items-center rounded-[var(--r-pill)] px-3 text-[15px] text-[var(--ink-2)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
           >
             이번 달
           </Link>
-          <Link href={`/?m=${shiftMonth(monthKey, 1)}`} className={iconBtn} aria-label="다음 달">
+          <Link href={`/?m=${shiftMonth(monthKey, 1)}`} scroll={false} className={iconBtn} aria-label="다음 달">
             ›
           </Link>
         </div>

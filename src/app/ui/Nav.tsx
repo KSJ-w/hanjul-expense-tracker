@@ -14,7 +14,7 @@ import { usePathname } from 'next/navigation';
  */
 export const DESTINATIONS = [
   { href: '/', label: '달력' },
-  { href: '/dashboard', label: '분석' },
+  { href: '/dashboard', label: '통계' },
   { href: '/search', label: '내역' },
   { href: '/settings', label: '설정' },
 ];

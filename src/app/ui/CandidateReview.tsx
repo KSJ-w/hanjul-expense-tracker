@@ -125,13 +125,13 @@ function CandidateForm({
     date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? null : '날짜를 정해 주세요.',
     amount: amount.trim() === '' ? '금액을 적어 주세요.' : amountValue <= 0 ? '0보다 큰 금액을 적어 주세요.' : null,
     direction: direction === '' ? '수입인지 지출인지 골라 주세요.' : null,
-    category: categoryId === '' ? '분류를 선택해 주세요.' : null,
+    category: categoryId === '' ? '태그를 선택해 주세요.' : null,
   };
   const missingCount = Object.values(errors).filter(Boolean).length;
   const ready = missingCount === 0;
 
   const summary = ready
-    ? `${direction === 'income' ? '수입' : '지출'} · ${categories.find((c) => c.id === categoryId)?.name ?? '미분류'} · ${krDate(date)}`
+    ? `${direction === 'income' ? '수입' : '지출'} · ${categories.find((c) => c.id === categoryId)?.name ?? '태그 없음'} · ${krDate(date)}`
     : `${missingCount}가지를 더 확인해 주세요`;
 
   return (
@@ -199,7 +199,7 @@ function CandidateForm({
         </Field>
 
         <Field
-          label="분류"
+          label="태그"
           htmlFor="cand-category"
           error={errors.category ?? undefined}
           hint={direction === '' ? '수입 또는 지출을 먼저 선택하세요.' : undefined}
@@ -210,8 +210,8 @@ function CandidateForm({
             onChange={setCategoryId}
             disabled={direction === ''}
             invalid={errors.category !== null}
-            placeholder="미분류"
-            options={[{ value: '', label: '미분류' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
+            placeholder="태그 없음"
+            options={[{ value: '', label: '태그 없음' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
           />
         </Field>
       </div>

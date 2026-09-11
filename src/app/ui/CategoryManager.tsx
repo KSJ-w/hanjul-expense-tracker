@@ -29,7 +29,7 @@ export function CategoryManager({
   const inputId = useId();
 
   const list = categories.filter((c) => c.direction === direction);
-  const heading = direction === 'expense' ? '지출 분류' : '수입 분류';
+  const heading = direction === 'expense' ? '지출 태그' : '수입 태그';
 
   function add() {
     startTransition(async () => {
@@ -47,7 +47,7 @@ export function CategoryManager({
 
       <div className="mb-4 flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <Field label="새 분류 이름" htmlFor={inputId}>
+          <Field label="새 태그 이름" htmlFor={inputId}>
             <input
               id={inputId}
               value={newName}
@@ -75,7 +75,7 @@ export function CategoryManager({
       ) : null}
 
       {list.length === 0 ? (
-        <p className="py-6 text-center text-[15px] text-[var(--ink-2)]">아직 만든 분류가 없어요.</p>
+        <p className="py-6 text-center text-[15px] text-[var(--ink-2)]">아직 만든 태그가 없어요.</p>
       ) : (
         <ul className="flex flex-col">
           {list.map((c) => (
@@ -83,7 +83,7 @@ export function CategoryManager({
               {editingId === c.id ? (
                 <div className="flex items-end gap-2">
                   <div className="min-w-0 flex-1">
-                    <Field label="분류 이름" htmlFor={`rename-${c.id}`}>
+                    <Field label="태그 이름" htmlFor={`rename-${c.id}`}>
                       <input
                         id={`rename-${c.id}`}
                         value={editName}
@@ -150,14 +150,14 @@ export function CategoryManager({
       )}
 
       <p className="mt-3 text-[13px] text-[var(--ink-3)]">
-        보관하면 지난 기록은 유지되고, 새 기록의 선택지에서만 숨겨져요. 보관한 분류를 다시 꺼내는
+        보관하면 지난 기록은 유지되고, 새 기록의 선택지에서만 숨겨져요. 보관한 태그를 다시 꺼내는
         화면은 아직 없어요.
       </p>
 
       <Dialog
         open={confirming !== null}
         onClose={() => setConfirming(null)}
-        title="이 분류를 보관할까요?"
+        title="이 태그를 보관할까요?"
         subtitle={confirming ? `${confirming.name} · 기록 ${confirming.count}건` : undefined}
         footer={
           <>
@@ -185,7 +185,7 @@ export function CategoryManager({
         }
       >
         <p className="text-[15px] leading-relaxed text-[var(--ink-2)]">
-          지난 기록이 어느 분류였는지는 그대로 유지돼요. 앞으로 새로 기록할 때의 선택지에서만
+          지난 기록이 어느 태그였는지는 그대로 유지돼요. 앞으로 새로 기록할 때의 선택지에서만
           빠져요.
         </p>
       </Dialog>

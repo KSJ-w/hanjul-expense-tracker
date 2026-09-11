@@ -105,13 +105,13 @@ export function RecurringManager({
                 }}
               />
             </Field>
-            <Field label="분류" htmlFor="rec-category">
+            <Field label="태그" htmlFor="rec-category">
               <Select
                 id="rec-category"
                 value={categoryId}
                 onChange={setCategoryId}
-                placeholder="미분류"
-                options={[{ value: '', label: '미분류' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
+                placeholder="태그 없음"
+                options={[{ value: '', label: '태그 없음' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
               />
             </Field>
             <Field label="매월 기록일" htmlFor="rec-day" hint="1부터 31까지 정할 수 있어요.">

@@ -106,6 +106,51 @@ function shiftBack(type: PeriodType, from: string): string {
   return `${Number(from.slice(0, 4)) - 1}-12-31`;
 }
 
+/**
+ * 기간을 앞뒤로 옮긴다 — 통계 화면의 ‹ › 가 쓴다.
+ *
+ * 옮긴 결과는 **그 기간의 첫날**로 돌려준다. 앵커가 기간 안 아무 날이나여도
+ * 되지만, 첫날로 고정해야 31일에서 2월로 옮길 때 날짜가 흘러넘치지 않는다.
+ */
+export function shiftPeriod(type: PeriodType, anchor: string, delta: number): string {
+  if (type === 'week') return addDays(startOfWeek(anchor), delta * 7);
+  if (type === 'month') {
+    const d = new Date(Number(anchor.slice(0, 4)), Number(anchor.slice(5, 7)) - 1 + delta, 1);
+    return toISODate(d);
+  }
+  return `${Number(anchor.slice(0, 4)) + delta}-01-01`;
+}
+
+/**
+ * 그 날이 속한 주가 **몇 월 몇 주차**인가.
+ *
+ * 규칙은 하나다 — **그 달의 1일이 들어 있는 주가 그 달의 1주차**다.
+ * 그래서 2026-08-31(월)~09-06(일)은 9월 1일을 품고 있으므로 '9월 1주차'이고,
+ * 8월의 마지막 주가 아니다. 주는 월요일에 시작한다(`startOfWeek`).
+ *
+ * 1일을 품지 않은 주는 이레가 모두 한 달 안에 있으므로 그 달의 것이다.
+ * 이렇게 하면 어느 주도 두 번 세거나 빠지지 않는다.
+ */
+export function weekOfMonth(iso: string): { year: number; month: number; week: number } {
+  const mon = startOfWeek(iso);
+
+  let owner = mon.slice(0, 7);
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(mon, i);
+    if (d.slice(8, 10) === '01') {
+      owner = d.slice(0, 7);
+      break;
+    }
+  }
+
+  const firstMon = startOfWeek(`${owner}-01`);
+  // 날수를 세지 않고 반올림한다 — 시간대에 따라 하루가 23·25시간일 수 있다.
+  const weeks = Math.round(
+    (parseISODate(mon).getTime() - parseISODate(firstMon).getTime()) / (7 * 24 * 60 * 60 * 1000),
+  );
+  return { year: Number(owner.slice(0, 4)), month: Number(owner.slice(5, 7)), week: weeks + 1 };
+}
+
 export function periodLabel(type: PeriodType, from: string): string {
   const y = from.slice(0, 4);
   const m = Number(from.slice(5, 7));

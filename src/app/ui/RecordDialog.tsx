@@ -225,13 +225,13 @@ export function RecordDialog({
           />
         </Field>
 
-        <Field label="분류" htmlFor="record-category">
+        <Field label="태그" htmlFor="record-category">
           <Select
             id="record-category"
             value={categoryId}
             onChange={setCategoryId}
-            placeholder="미분류"
-            options={[{ value: '', label: '미분류' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
+            placeholder="태그 없음"
+            options={[{ value: '', label: '태그 없음' }, ...pool.map((c) => ({ value: c.id, label: c.name }))]}
           />
         </Field>
 

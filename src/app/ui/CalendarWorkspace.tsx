@@ -94,7 +94,8 @@ export function CalendarWorkspace({
   function choose(date: string) {
     // 옆 달 날짜를 누르면 그 달로 옮기고 그 날짜의 상세를 연다(§9).
     if (date.slice(0, 7) !== monthKey) {
-      router.push(`/?d=${date}`);
+      // 같은 화면에서 달만 옮기는 것이다 — 보던 자리를 지킨다(ADR-038).
+      router.push(`/?d=${date}`, { scroll: false });
       return;
     }
     setSelected(date);
@@ -445,7 +446,7 @@ function DayDetailDialog({
                      * 분류를 내용 앞에 두면 무엇에 쓴 돈인지가 먼저 읽힌다.
                      */}
                     <span className="flex items-center gap-2">
-                      <CategoryChip name={cat ? cat.name : '미분류'} />
+                      <CategoryChip name={cat ? cat.name : '태그 없음'} />
                       {/*
                        * 적은 내용이 없으면 '내용 없음'이라고 쓰지 않는다 — 없다는
                        * 사실을 낱말로 채우면 있는 줄보다 오히려 눈에 걸린다.

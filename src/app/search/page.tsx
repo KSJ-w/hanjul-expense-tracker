@@ -7,6 +7,7 @@ import type { Direction, RecordQuery } from '@/lib/domain/types';
 import { btn, CategoryChip, EmptyNote, Field, inputClass, Money, Panel, SectionTitle } from '../ui/atoms';
 import { Select } from '../ui/Select';
 import { AmountInput } from '../ui/AmountInput';
+import { QueryForm } from '../ui/QueryForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ export default async function HistoryPage({
   if (sp.dir) activeChips.push({ label: sp.dir === 'income' ? '수입만' : '지출만', key: 'dir' });
   if (sp.cat) {
     const c = categories.find((x) => x.id === sp.cat);
-    activeChips.push({ label: c ? `분류 ${c.name}` : '분류 선택됨', key: 'cat' });
+    activeChips.push({ label: c ? `태그 ${c.name}` : '태그 선택됨', key: 'cat' });
   }
   if (sp.min) activeChips.push({ label: `최소 ${sp.min}원`, key: 'min' });
   if (sp.max) activeChips.push({ label: `최대 ${sp.max}원`, key: 'max' });
@@ -92,7 +93,8 @@ export default async function HistoryPage({
       <h1 className="text-[24px] font-bold tracking-tight">내역</h1>
 
       <Panel className="p-4 sm:p-5">
-        <form method="get" className="flex flex-col gap-4">
+        {/* 조건을 바꿔도 바뀌는 것은 아래 목록뿐이다 — 화면을 통째로 다시 받지 않는다(ADR-038). */}
+        <QueryForm action="/search" className="flex flex-col gap-4">
           <Field label="내용 검색" htmlFor="f-q">
             <input id="f-q" name="q" defaultValue={sp.q ?? ''} placeholder="회식, 편의점" className={inputClass} />
           </Field>
@@ -121,7 +123,7 @@ export default async function HistoryPage({
                 ]}
               />
             </Field>
-            <Field label="분류" htmlFor="f-cat">
+            <Field label="태그" htmlFor="f-cat">
               <Select
                 id="f-cat"
                 name="cat"
@@ -164,11 +166,11 @@ export default async function HistoryPage({
             <button type="submit" className={btn.primary}>
               검색
             </button>
-            <Link href="/search" className={btn.ghost}>
+            <Link href="/search" scroll={false} className={btn.ghost}>
               조건 지우기
             </Link>
           </div>
-        </form>
+        </QueryForm>
 
         {activeChips.length > 0 ? (
           <ul className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
@@ -176,6 +178,7 @@ export default async function HistoryPage({
               <li key={c.key}>
                 <Link
                   href={without(c.key)}
+                  scroll={false}
                   className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-chip)] bg-[var(--surface-2)] px-2.5 text-[13px] text-[var(--ink-2)] hover:text-[var(--ink)]"
                 >
                   {c.label}
@@ -210,7 +213,7 @@ export default async function HistoryPage({
             <EmptyNote
               title="조건에 맞는 기록을 찾지 못했어요"
               action={
-                <Link href="/search" className={btn.outline}>
+                <Link href="/search" scroll={false} className={btn.outline}>
                   조건 지우기
                 </Link>
               }
@@ -256,7 +259,7 @@ export default async function HistoryPage({
                           </span>
                           <span className="flex items-center gap-1.5 text-[13px] text-[var(--ink-3)]">
                             <span>{r.direction === 'income' ? '수입' : '지출'}</span>
-                            <CategoryChip name={cat ? cat.name : '미분류'} />
+                            <CategoryChip name={cat ? cat.name : '태그 없음'} />
                           </span>
                         </Link>
                       </li>

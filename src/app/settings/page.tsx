@@ -17,9 +17,9 @@ export const dynamic = 'force-dynamic';
  * 못하는 임시 묶음이었다. 목적별 구역과 목차로 다시 묶었다.
  */
 const SECTIONS = [
-  { id: 'categories', label: '분류 관리' },
+  { id: 'categories', label: '태그 관리' },
   { id: 'recurring', label: '반복 기록' },
-  { id: 'rules', label: '자동 분류 규칙' },
+  { id: 'rules', label: '자동 태그 규칙' },
   { id: 'data', label: '데이터와 백업' },
   { id: 'outbound', label: '입력 처리와 외부 전송' },
 ];
@@ -57,7 +57,7 @@ export default function SettingsPage() {
       </nav>
 
       <Panel id="categories" className="scroll-mt-6 p-4 sm:p-5">
-        <SectionTitle hint={`${categories.length}개`}>분류 관리</SectionTitle>
+        <SectionTitle hint={`${categories.length}개`}>태그 관리</SectionTitle>
         <div className="grid gap-6 lg:grid-cols-2">
           <CategoryManager categories={categories} direction="expense" />
           <CategoryManager categories={categories} direction="income" />
@@ -73,9 +73,9 @@ export default function SettingsPage() {
       </Panel>
 
       <Panel id="rules" className="scroll-mt-6 p-4 sm:p-5">
-        <SectionTitle hint={`${rules.length}개`}>자동 분류 규칙</SectionTitle>
+        <SectionTitle hint={`${rules.length}개`}>자동 태그 규칙</SectionTitle>
         <p className="mb-4 text-[13px] text-[var(--ink-2)]">
-          저장 전 확인에서 분류를 고치면, 같은 거래처 이름이 정확히 일치할 때 다음부터 그 분류로 채워요.
+          저장 전 확인에서 태그를 고치면, 같은 거래처 이름이 정확히 일치할 때 다음부터 그 태그로 채워요.
         </p>
         {rules.length === 0 ? (
           <p className="py-6 text-center text-[15px] text-[var(--ink-2)]">아직 기억한 규칙이 없어요.</p>
@@ -93,7 +93,7 @@ export default function SettingsPage() {
                 {r.categoryName ? (
                   <CategoryChip name={r.categoryName} />
                 ) : (
-                  <span className="text-[13px] text-[var(--ink-3)]">보관한 분류</span>
+                  <span className="text-[13px] text-[var(--ink-3)]">보관한 태그</span>
                 )}
               </li>
             ))}

@@ -144,6 +144,23 @@ body {
 }
 
 /*
+ * 차트 — recharts 가 SVG 에 `tabindex="0"` 과 `role="application"` 을 준다.
+ * 자판으로 값을 훑을 수 있으라고 둔 것이라 **초점 자체는 살려 둔다.**
+ *
+ * 다만 눌러서 들어온 초점에는 브라우저 기본 링이 검게 둘러진다(실제로 겪음 —
+ * 기간 추이 안을 누르면 차트가 통째로 검은 테두리를 얻었다). 그것만 끄고,
+ * 자판으로 온 초점은 우리 링으로 그린다. 뒤에 오는 규칙이 이긴다.
+ */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+.recharts-surface:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/*
  * 밑줄 입력칸은 **줄 자체가 포커스 표시**다(ADR-026).
  *
  * 여기에 상자 링을 겹쳐 그리면 방금 없앤 상자가 포커스할 때마다 되살아난다 —
