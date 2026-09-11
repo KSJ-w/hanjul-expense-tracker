@@ -66,7 +66,7 @@ export default async function CalendarPage({
   return (
     <div className="has-dock flex flex-col gap-4">
       {sp.back ? (
-        <Link href={`/search?${sp.back}`} className="w-fit text-[15px] text-[var(--primary)] hover:underline">
+        <Link href="/search" className="w-fit text-[15px] text-[var(--primary)] hover:underline">
           ← 검색 결과로 돌아가기
         </Link>
       ) : null}

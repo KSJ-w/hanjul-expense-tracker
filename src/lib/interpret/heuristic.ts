@@ -1,7 +1,15 @@
-import type { InterpretInput, InterpretOutcome, InterpretProvider, InterpretedItem } from './types';
+import type {
+  InterpretInput,
+  InterpretOutcome,
+  InterpretProvider,
+  InterpretedItem,
+  QueryInput,
+  QueryOutcome,
+} from './types';
 import { findAmounts } from '../domain/money';
 import { detectDate, detectDirection, detectMerchant, directionIsExplicit, splitSegments } from './korean';
 import { guessCategoryId } from './categoryHint';
+import { parseQuery } from './queryRules';
 import { lookupMerchantCategory } from '../repo/merchantRules';
 
 /**
@@ -18,6 +26,21 @@ export const heuristicProvider: InterpretProvider = {
   usesNetwork: false,
   outboundFields: [],
   isAvailable: () => true,
+
+  /** 조회 문장도 기기 안 규칙으로 읽는다(FR-VIEW-13). 밖으로 나가는 것이 없다. */
+  async interpretQuery(input: QueryInput): Promise<QueryOutcome> {
+    const started = Date.now();
+    const { parts } = parseQuery(input.text, input.today, input.categories);
+    return {
+      parts,
+      providerName: heuristicProvider.name,
+      degraded: false,
+      // 조건을 하나도 알아듣지 못한 것은 '실패'다 — 조건 없는 전체 목록을
+      // 결과인 것처럼 내놓지 않기 위해 그 사실을 값으로 남긴다(US-08-01 수용 조건 6).
+      failure: parts.length === 0 ? 'unparseable' : undefined,
+      elapsedMs: Date.now() - started,
+    };
+  },
 
   async interpret(input: InterpretInput): Promise<InterpretOutcome> {
     const started = Date.now();

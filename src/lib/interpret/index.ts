@@ -1,8 +1,24 @@
-import type { InterpretInput, InterpretOutcome, InterpretProvider, OutboundField } from './types';
+import type {
+  InterpretInput,
+  InterpretOutcome,
+  InterpretProvider,
+  OutboundField,
+  QueryInput,
+  QueryOutcome,
+} from './types';
 import { heuristicProvider } from './heuristic';
 import { geminiProvider, geminiModelName } from './gemini';
 
-export type { InterpretInput, InterpretOutcome, InterpretedItem, OutboundField } from './types';
+export type {
+  InterpretInput,
+  InterpretOutcome,
+  InterpretedItem,
+  OutboundField,
+  QueryInput,
+  QueryOutcome,
+  QueryPart,
+  QueryTerm,
+} from './types';
 
 /**
  * 해석 경계 — 밖으로 나가는 일은 전부 이 아래에서만 일어난다(SDD §2 불변조건 1·2).
@@ -69,6 +85,34 @@ export async function interpret(input: InterpretInput): Promise<InterpretOutcome
     ...backup,
     degraded: true,
     failure: outcome.failure,
+    failureDetail: outcome.failureDetail,
+    providerName: `${heuristicProvider.name} (${primary.name} 실패)`,
+    elapsedMs: Date.now() - started,
+  };
+}
+
+/**
+ * 조회 문장을 조건으로 바꾼다 — FR-VIEW-13.
+ *
+ * 기록 해석과 같은 규칙으로 대체한다: 외부가 실패하면 기기 안 규칙이 이어받되
+ * **그 사실을 degraded 로 알린다.** 조용히 대체하면 사용자는 왜 덜 알아들었는지
+ * 알 수 없고, 대체하지 않으면 키가 없는 동안 내역을 찾을 길이 통째로 끊긴다.
+ */
+export async function interpretQuery(input: QueryInput): Promise<QueryOutcome> {
+  const primary = activeProvider();
+  const started = Date.now();
+  const outcome = await primary.interpretQuery(input);
+
+  const failed = outcome.failure !== undefined && outcome.parts.length === 0;
+  if (!failed || primary === heuristicProvider) {
+    return { ...outcome, elapsedMs: Date.now() - started };
+  }
+
+  const backup = await heuristicProvider.interpretQuery(input);
+  return {
+    ...backup,
+    degraded: true,
+    failure: backup.parts.length === 0 ? outcome.failure : undefined,
     failureDetail: outcome.failureDetail,
     providerName: `${heuristicProvider.name} (${primary.name} 실패)`,
     elapsedMs: Date.now() - started,

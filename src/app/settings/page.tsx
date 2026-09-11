@@ -116,8 +116,15 @@ export default function SettingsPage() {
           </p>
         ) : (
           <>
+            {/*
+              * 나가는 때를 **빠짐없이** 적는다. 내역 검색이 해석을 쓰게 되면서
+              * (FR-VIEW-13) 나가는 때가 둘이 되었는데 이 문장이 '조회에서는
+              * 나가지 않는다'고 말하고 있었다 — 안내와 실제가 어긋나면
+              * `FR-ENTRY-16` 은 지켜지지 않은 것이다(§8).
+              */}
             <p className="mb-4 text-[13px] text-[var(--ink-2)]">
-              해석을 요청할 때 아래 항목이 외부로 나가요. 조회·요약·백업에서는 나가지 않아요.
+              해석을 요청할 때 — <strong className="font-semibold">기록을 적을 때와 내역을 찾을 때</strong> —
+              아래 항목이 외부로 나가요. 합계·달력·백업에서는 나가지 않아요.
             </p>
             <ul className="flex flex-col">
               {outbound.map((f) => (

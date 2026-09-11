@@ -18,12 +18,13 @@ import {
   deleteRecord,
   restoreRecord,
   lastDeletedRecord,
+  queryRecords,
 } from '@/lib/repo/records';
 import { setBudget, clearBudget } from '@/lib/repo/budgets';
 import { addRecurring, removeRecurring, setRecurringActive } from '@/lib/repo/recurring';
 import { saveDataUrl } from '@/lib/repo/images';
 import { importBundle } from '@/lib/transfer';
-import { interpret } from '@/lib/interpret';
+import { interpret, interpretQuery } from '@/lib/interpret';
 
 function refresh(): void {
   revalidatePath('/', 'layout');
@@ -322,4 +323,79 @@ export async function importBundleAction(
     ok: true,
     message: `들여오기 ${r.imported}건 · 건너뜀 ${r.skipped}건 · 이미지 ${r.imagesRestored}건`,
   };
+}
+
+/* ------------------------------------------------------------ 내역 검색 */
+
+/** 대화 한 턴이 보여 줄 기록 한 줄. 화면이 다시 조회하지 않도록 필요한 것만 담는다. */
+export interface SearchHit {
+  id: string;
+  date: string;
+  note: string;
+  amount: number;
+  direction: Direction;
+  tag: string;
+}
+
+/** 답 하나가 보여 줄 한 덩어리. 나눠 물었으면 덩어리가 여럿이다(ADR-042). */
+export interface SearchGroup {
+  /** 이 덩어리의 이름. 나뉘지 않았으면 빈 문자열이다. */
+  label: string;
+  /** 알아들은 조건. **0 건일 때만** 화면에 적는다 — 그 밖에는 사용자의 말풍선이 그 일을 한다. */
+  terms: string[];
+  items: SearchHit[];
+  truncated: boolean;
+}
+
+export interface SearchTurnResult {
+  ok: boolean;
+  groups: SearchGroup[];
+  degraded: boolean;
+  failureDetail?: string;
+}
+
+const SEARCH_LIMIT = 200;
+
+/**
+ * 한 줄로 적은 조회 요청에 답한다 — FR-VIEW-13, ADR-041·ADR-042.
+ *
+ * 한 문장이 조회를 **여럿** 부를 수 있다("지출과 수입 따로 보여줘"). 합쳐서 한
+ * 목록으로 내놓으면 사용자가 물은 '따로'를 화면이 되돌려 버리므로, 몫마다 따로 조회해
+ * 따로 돌려준다.
+ *
+ * 하나도 알아듣지 못했으면 조회하지 않는다. 조건 없는 전체 목록을 답인 것처럼
+ * 내놓으면 사용자는 자기 문장이 통했다고 읽는다(US-08-01 수용 조건 6).
+ */
+export async function searchTurnAction(text: string): Promise<SearchTurnResult> {
+  const said = text.trim();
+  const empty: SearchTurnResult = { ok: false, groups: [], degraded: false };
+  if (!said) return empty;
+
+  const db = getDb();
+  const categories = listCategories(undefined, db);
+  const outcome = await interpretQuery({ text: said, today: todayISO(), categories });
+
+  if (outcome.parts.length === 0) {
+    return { ...empty, degraded: outcome.degraded, failureDetail: outcome.failureDetail };
+  }
+
+  const nameOf = new Map(categories.map((c) => [c.id, c.name]));
+  const groups: SearchGroup[] = outcome.parts.map((part) => {
+    const found = queryRecords({ ...part.query, limit: SEARCH_LIMIT }, db);
+    return {
+      label: part.label,
+      terms: part.terms.map((t) => t.label),
+      items: found.items.map((r) => ({
+        id: r.id,
+        date: r.date,
+        note: r.note,
+        amount: r.amount,
+        direction: r.direction,
+        tag: r.categoryId ? (nameOf.get(r.categoryId) ?? '보관한 태그') : '태그 없음',
+      })),
+      truncated: found.items.length >= SEARCH_LIMIT,
+    };
+  });
+
+  return { ok: true, groups, degraded: outcome.degraded, failureDetail: outcome.failureDetail };
 }
