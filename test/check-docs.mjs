@@ -91,7 +91,7 @@ const prdTrace = mentionedIds(
 const missingPrd = [...rfpIds].filter((id) => !prdTrace.has(id));
 if (missingPrd.length) problems.push(`PRD 추적표에 없는 요구: ${missingPrd.join(', ')}`);
 
-const sddTrace = mentionedIds(sectionOf(doc.SDD, /^## 4\. SRS 추적/m, /^## 5\./m));
+const sddTrace = mentionedIds(sectionOf(doc.SDD, /^## \d+\. SRS 추적/m, /^## \d+\. 미결/m));
 const missingSdd = [...srsIds].filter((id) => !sddTrace.has(id));
 if (missingSdd.length)
   problems.push(`SDD 가 어떤 설계로 실현하는지 밝히지 않은 요구: ${missingSdd.join(', ')}`);
