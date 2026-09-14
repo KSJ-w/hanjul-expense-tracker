@@ -24,15 +24,29 @@ import type { RecordQuery } from '../domain/types';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 /**
- * 기본 모델.
+ * 모델 둘 — 먼저 부르는 것과, 그것이 안 될 때 부르는 것(ADR-044).
  *
- * `gemini-2.5-flash` 는 목록 조회에는 나오지만 **새로 발급한 키로 호출하면 404** 다
- * ("no longer available to new users"). 그 응답이 후속으로 지목한 것이 이 모델이다.
- * 더 새 모델(3.7·3.8-flash)도 이 키로 열려 있으나, 공급자가 문서로 지목한 이전 경로를
- * 기본값으로 둔다 — 무료 등급의 한도는 모델마다 다르고 우리가 통제할 수 없다.
- * 바꾸려면 코드가 아니라 `GEMINI_MODEL` 환경 변수를 쓴다.
+ * 먼저 부르는 것은 **가볍고 빠른 쪽**이다. 이 제품이 시키는 일(한 줄을 구조로
+ * 바꾸기·조회 조건 뽑기)은 긴 추론이 필요한 일이 아니라서, 무거운 모델을 쓰면
+ * 값과 시간만 더 쓴다.
+ *
+ * 대체 모델을 두는 이유는 **모델마다 한도와 과부하가 따로** 오기 때문이다.
+ * 한쪽이 429·503 으로 막혀도 다른 쪽은 멀쩡한 경우가 잦다 — 실제로 3.6-flash 가
+ * 503 을 이어서 내는 동안 기기 안 규칙만 돌았다. 같은 모델을 다시 부르는 것
+ * (ADR-043)과 **다른 모델을 부르는 것은 다른 약**이다: 앞의 것은 잠깐 막힌 것에,
+ * 뒤의 것은 그 모델이 한동안 바쁜 것에 듣는다.
+ *
+ * `gemini-2.5-flash` 를 쓰지 않는다 — 목록 조회에는 나오지만 **새로 발급한 키로
+ * 호출하면 404** 다("no longer available to new users").
+ *
+ * 바꾸려면 코드가 아니라 `GEMINI_MODEL`·`GEMINI_MODEL_FALLBACK` 환경 변수를 쓴다.
  */
-const MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.6-flash';
+const MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite';
+const FALLBACK_MODEL = process.env.GEMINI_MODEL_FALLBACK ?? 'gemini-3.6-flash';
+
+/** 부르는 차례. 같은 이름이 두 번 오지 않게 한다. */
+const MODELS = MODEL === FALLBACK_MODEL ? [MODEL] : [MODEL, FALLBACK_MODEL];
+
 const TIMEOUT_MS = 15_000;
 
 function apiKey(): string | undefined {
@@ -58,23 +72,24 @@ type Asked =
   | { ok: true; raw: string }
   | { ok: false; failure: 'no-response' | 'unparseable'; detail: string };
 
-/**
- * **제품에서 네트워크로 나가는 유일한 자리.** 기록 해석과 조회 해석이 함께 쓴다.
- * 호출을 다른 함수로 옮기더라도 이 파일 밖으로 내보내지 않는다(§2 불변조건 1).
- */
-async function askGemini(
+/** 이 모델이 아예 없거나 이 키로 열려 있지 않다 — 다시 물어도 같다. 다음 모델로 넘어간다. */
+const MODEL_GONE = new Set([400, 403, 404]);
+
+/** 모델 하나에게 묻는다. 잠깐 막힌 것이면 그 자리에서 다시 묻는다(ADR-043). */
+async function askModel(
+  model: string,
   key: string,
   parts: Record<string, unknown>[],
   schema: unknown,
   what: string,
-): Promise<Asked> {
+): Promise<Asked & { giveUpOnModel?: boolean }> {
   let lastDetail = '';
 
   for (let attempt = 0; attempt <= RETRIES; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(`${ENDPOINT}/${MODEL}:generateContent`, {
+      const res = await fetch(`${ENDPOINT}/${model}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
@@ -91,8 +106,11 @@ async function askGemini(
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         lastDetail = `HTTP ${res.status} ${shorten(text)}`;
+        if (MODEL_GONE.has(res.status)) {
+          return { ok: false, failure: 'no-response', detail: lastDetail, giveUpOnModel: true };
+        }
         if (RETRY_STATUS.has(res.status) && attempt < RETRIES) {
-          console.warn(`[interpret:${what}] ${lastDetail} — ${RETRY_WAIT_MS}ms 뒤 다시 물어본다 (${attempt + 1}/${RETRIES})`);
+          console.warn(`[interpret:${what}] ${model} ${lastDetail} — ${RETRY_WAIT_MS}ms 뒤 다시 물어본다 (${attempt + 1}/${RETRIES})`);
           clearTimeout(timer);
           await sleep(RETRY_WAIT_MS * (attempt + 1));
           continue;
@@ -107,7 +125,6 @@ async function askGemini(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       lastDetail = msg === 'The operation was aborted.' ? `${TIMEOUT_MS}ms 안에 응답이 없었다` : msg;
-      // 끊긴 것도 다시 물어볼 값이 있다 — 다만 마지막 시도였으면 여기서 끝낸다.
       if (attempt < RETRIES) {
         await sleep(RETRY_WAIT_MS * (attempt + 1));
         continue;
@@ -118,6 +135,34 @@ async function askGemini(
     }
   }
   return { ok: false, failure: 'no-response', detail: lastDetail || '알 수 없는 실패' };
+}
+
+/**
+ * **제품에서 네트워크로 나가는 유일한 자리.** 기록 해석과 조회 해석이 함께 쓴다.
+ *
+ * 모델을 차례로 부른다. 앞의 것이 끝내 안 되면 뒤의 것에게 묻는다 — 그 사실을
+ * 서버 로그에 남긴다. 조용히 갈아타면 **왜 답이 달라졌는지** 아무 데서도 알 수 없다.
+ */
+async function askGemini(
+  key: string,
+  parts: Record<string, unknown>[],
+  schema: unknown,
+  what: string,
+): Promise<Asked> {
+  let last: Asked = { ok: false, failure: 'no-response', detail: '부를 모델이 없다' };
+
+  for (const [i, model] of MODELS.entries()) {
+    const r = await askModel(model, key, parts, schema, what);
+    if (r.ok) {
+      if (i > 0) console.warn(`[interpret:${what}] ${MODELS[0]} 대신 ${model} 이 답했다`);
+      return r;
+    }
+    last = { ok: false, failure: r.failure, detail: `${model}: ${r.detail}` };
+    if (i < MODELS.length - 1) {
+      console.warn(`[interpret:${what}] ${model} 실패(${r.detail}) — ${MODELS[i + 1]} 로 넘어간다`);
+    }
+  }
+  return last;
 }
 
 const RESPONSE_SCHEMA = {
@@ -258,7 +303,7 @@ export const geminiProvider: InterpretProvider = {
 
 /** 조회 해석의 실패. 기록 해석과 같은 이유로 서버 로그에 남긴다 — 조용히 삼키지 않는다. */
 function failQuery(started: number, failure: 'no-response' | 'unparseable', detail: string) {
-  console.warn(`[interpret:query] ${geminiProvider.name}(${MODEL}) 실패: ${failure} — ${detail}`);
+  console.warn(`[interpret:query] ${geminiProvider.name}(${MODELS.join(' → ')}) 실패: ${failure} — ${detail}`);
   return {
     providerName: geminiProvider.name,
     degraded: false,
@@ -426,7 +471,7 @@ function fail(
 ): InterpretOutcome {
   // 서버 로그에 남긴다. 조용히 폴백하면 "왜 안 되는가"를 아무도 알 수 없다.
   // 키는 담기지 않는다 — detail 은 응답 본문과 오류 메시지에서만 온다.
-  console.warn(`[interpret] ${geminiProvider.name}(${MODEL}) 실패: ${failure}${detail ? ` — ${detail}` : ''}`);
+  console.warn(`[interpret] ${geminiProvider.name}(${MODELS.join(' → ')}) 실패: ${failure}${detail ? ` — ${detail}` : ''}`);
   return {
     items: [],
     providerName: geminiProvider.name,
@@ -437,9 +482,12 @@ function fail(
   };
 }
 
-/** 지금 쓰이는 모델 이름. 설정 화면이 보여 준다. 밖으로 나가는 호출이 아니다. */
+/**
+ * 지금 쓰이는 모델. 설정 화면이 보여 준다. 밖으로 나가는 호출이 아니다.
+ * 대체 모델이 있으면 함께 적는다 — 답이 어느 쪽에서 왔는지 물을 수 있어야 한다.
+ */
 export function geminiModelName(): string {
-  return MODEL;
+  return MODELS.length > 1 ? `${MODELS[0]} (대체: ${MODELS[1]})` : MODELS[0];
 }
 
 /** 외부에서 온 값을 그대로 믿지 않는다. 분류는 반드시 우리 분류 집합 안으로 좁힌다(FR-CAT-06). */
