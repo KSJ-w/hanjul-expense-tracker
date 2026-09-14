@@ -11,6 +11,7 @@
  *   3) ADR 행에 빈 칸이나 "없음" 대안이 없는가
  *   4) 코드 주석이 인용한 요구 번호가 SRS 에 실재하는가
  *   5) SRS 의 시험 유형 요구가 TC 문서에 하나라도 걸려 있는가
+ *   6) 층마다 요구 문장의 주어가 다른가 — RFP 는 사용자·제품, SRS 는 시스템
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -179,6 +180,46 @@ for (const line of doc.SRS.split('\n')) {
 const noTc = testType.filter((id) => !tcMentioned.has(id));
 if (noTc.length) problems.push(`시험 유형인데 TC 문서에 없는 요구: ${noTc.join(', ')}`);
 notes.push(`시험 유형 요구 ${testType.length}개 / TC 문서가 다루는 것 ${testType.length - noTc.length}개`);
+
+// ── 6) 층마다 요구 문장의 주어가 다른가 (CLAUDE.md §9) ─────────────────────
+//
+// 같은 요구가 층을 지나며 언어를 바꾸지 않으면 그 층은 윗층의 초벌이 된다.
+// 실제로 RFP 39개가 전부 "시스템은 ~해야 한다"였고 SRS 가 같은 번호를 같은
+// 문형으로 다시 적어 두 층이 겹쳐 보였다. 글로만 적어 두면 되돌아오므로 검사한다.
+function requirementRows(text) {
+  const out = [];
+  for (const line of text.split('\n')) {
+    const m = /^\|\s*`((?:FR|NFR)-[A-Z]+-\d+)`\s*\|\s*([^|]+?)\s*\|/.exec(line);
+    if (m) out.push({ id: m[1], sentence: m[2] });
+  }
+  return out;
+}
+// 요구를 **정의하는 표**만 본다. 추적표는 두 번째 칸이 요구 문장이 아니다.
+const rfpReqSection = sectionOf(doc.RFP, /^## 5\. /m, /^## 7\./m); // §5 기능 + §6 품질
+const srsReqSection = sectionOf(doc.SRS, /^## 2\. /m, /^## 3\./m); // §2 기능
+if (!rfpReqSection || !srsReqSection) problems.push('요구 표의 절을 찾지 못했다 (RFP §5~§6 · SRS §2)');
+
+const rfpSystemVoiced = requirementRows(rfpReqSection).filter((r) => /시스템[은이]/.test(r.sentence));
+if (rfpSystemVoiced.length) {
+  problems.push(
+    `RFP 가 시스템을 주어로 적은 요구 ${rfpSystemVoiced.length}개: ${rfpSystemVoiced.map((r) => r.id).join(', ')}` +
+      ' — 그 문형은 SRS 의 것이다. RFP 는 사용자 또는 제품을 주어로 적는다 (.claude/CLAUDE.md §9)',
+  );
+}
+// SRS 는 반대다. 기능 요구(FR)는 시스템 계약이므로 시스템이 주어여야 한다.
+// NFR 은 측정 대상이 주어인 문장을 허용한다(RFP 예시와 같다).
+const srsNotSystemVoiced = requirementRows(srsReqSection).filter(
+  (r) => r.id.startsWith('FR-') && !/^시스템은/.test(r.sentence) && !/^\*\*\[폐기/.test(r.sentence),
+);
+if (srsNotSystemVoiced.length) {
+  problems.push(
+    `SRS 가 시스템을 주어로 적지 않은 기능 요구 ${srsNotSystemVoiced.length}개: ${srsNotSystemVoiced.map((r) => r.id).join(', ')}` +
+      ' — SRS 는 "시스템은 ~해야 한다"로 적는다',
+  );
+}
+notes.push(
+  `요구 문장의 주어: RFP 시스템 주어 ${rfpSystemVoiced.length}개(0이어야 한다) / SRS 기능 요구 중 시스템 주어가 아닌 것 ${srsNotSystemVoiced.length}개(0이어야 한다)`,
+);
 
 finish();
 
