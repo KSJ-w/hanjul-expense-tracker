@@ -3,11 +3,9 @@ import { getDb } from '../db';
 import { todayISO } from '../domain/date';
 import { hasAnyRecord, listByDate, totalsForPeriod, type Totals } from '../repo/records';
 import { listCandidates } from '../repo/candidates';
-import { emitDueRecurring } from '../repo/recurring';
-import { currentOutboundFields, interpretationStatus } from '../interpret';
+import { interpretationStatus } from '../interpret';
 import { IMAGE_ATTACH_NOTICE, IMAGE_ATTACH_NOTICE_LOCAL } from '../interpret/notices';
 import type { Candidate, RecordEntry } from '../domain/types';
-import type { OutboundField } from '../interpret/types';
 
 /**
  * 첫 진입 지점의 자료 — FR-ENTRY-17.
@@ -25,15 +23,11 @@ export interface HomeState {
   candidates: Candidate[];
   todayRecords: RecordEntry[];
   monthTotals: Totals;
-  outbound: OutboundField[];
   imageNotice: string;
   provider: { providerName: string; usesNetwork: boolean; externalAvailable: boolean };
 }
 
 export function buildHomeState(db: DatabaseSync = getDb(), today: string = todayISO()): HomeState {
-  // 반복 항목의 날짜가 지났으면 후보로 낸다. 확정하지 않는다(FR-ENTRY-12 + FR-ENTRY-05).
-  emitDueRecurring(today, db);
-
   const status = interpretationStatus();
   return {
     today,
@@ -43,7 +37,6 @@ export function buildHomeState(db: DatabaseSync = getDb(), today: string = today
     candidates: listCandidates(db),
     todayRecords: listByDate(today, db).items,
     monthTotals: totalsForPeriod('month', today, db),
-    outbound: currentOutboundFields(),
     imageNotice: status.usesNetwork ? IMAGE_ATTACH_NOTICE : IMAGE_ATTACH_NOTICE_LOCAL,
     provider: status,
   };

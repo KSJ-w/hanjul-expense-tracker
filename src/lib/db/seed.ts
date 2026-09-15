@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * 처음 켰을 때 들어 있는 분류 — FR-CAT-04, SDD 미결 D-04 의 확정 내용.
- * 전부 사용자가 이름을 바꾸거나 지울 수 있다(FR-CAT-02·FR-CAT-03).
+ * 전부 사용자가 이름을 바꿀 수 있다(FR-CAT-02). 보관은 ADR-046 으로 화면에서 내려갔다.
  * 여기를 고치면 SDD D-04 의 결정 칸도 같이 고친다.
  */
 export const SEED_EXPENSE_CATEGORIES = [
@@ -23,7 +23,7 @@ export const SEED_INCOME_CATEGORIES = ['급여', '용돈', '부수입', '기타'
 /**
  * 분류 집합이 비어 있으면 채운다.
  * 사용자가 전부 지운 상태를 되돌리지 않기 위해, '비어 있을 때만' 넣는다 —
- * 지운 것이 되살아나면 FR-CAT-03 이 무의미해진다.
+ * 지운 것이 되살아나면 사용자가 정리한 결과가 뒤집힌다.
  */
 export function seedCategoriesIfEmpty(db: DatabaseSync): void {
   const row = db.prepare('SELECT COUNT(*) AS n FROM categories').get() as { n: number };

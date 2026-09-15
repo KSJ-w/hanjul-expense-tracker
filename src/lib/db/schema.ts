@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS categories (
   seeded      INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL,
   -- 삭제는 보관 처리다. 행을 지우면 그 분류에 속했던 기록의 귀속이 끊겨
-  -- NFR-CAT-01(변경·삭제 전후 귀속 보존)이 깨진다. 선택지에서만 빠진다(FR-CAT-03).
+  -- NFR-CAT-01(변경·삭제 전후 귀속 보존)이 깨진다. 선택지에서만 빠진다.
   archived_at TEXT
 );
 -- 이름 중복 금지는 '살아 있는' 분류에만 적용한다. 보관된 이름은 다시 쓸 수 있다.

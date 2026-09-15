@@ -2,8 +2,7 @@
 
 import { useId, useState, useTransition } from 'react';
 import type { Category, Direction } from '@/lib/domain/types';
-import { addCategoryAction, deleteCategoryAction, renameCategoryAction } from '../actions';
-import { Dialog } from './Dialog';
+import { addCategoryAction, renameCategoryAction } from '../actions';
 import { btn, Field, IconButton, inputClass, StatusMessage } from './atoms';
 
 /**
@@ -25,7 +24,6 @@ export function CategoryManager({
   const [msg, setMsg] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [confirming, setConfirming] = useState<{ id: string; name: string; count: number } | null>(null);
   const inputId = useId();
 
   const list = categories.filter((c) => c.direction === direction);
@@ -113,9 +111,9 @@ export function CategoryManager({
                 </div>
               ) : (
                 /*
-                 * 줄의 동작은 아이콘이다(ADR-023). 줄마다 '이름 변경'·'보관'이
-                 * 글자로 늘어서면 정작 읽어야 할 분류 이름보다 버튼이 넓어진다.
-                 * 이름은 aria-label 과 풍선말에 남는다.
+                 * 줄의 동작은 아이콘이다(ADR-023). 이름이 글자 버튼으로 늘어서면
+                 * 정작 읽어야 할 태그 이름보다 버튼이 넓어진다. 이름은
+                 * aria-label 과 풍선말에 남는다.
                  */
                 <div className="flex items-center gap-1">
                   <span className="min-w-0 flex-1 truncate text-[15px]">{c.name}</span>
@@ -127,21 +125,6 @@ export function CategoryManager({
                       setEditName(c.name);
                     }}
                   />
-                  <IconButton
-                    icon="archive"
-                    label={`${c.name} 보관`}
-                    disabled={pending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const r = await deleteCategoryAction(c.id, false);
-                        if (!r.ok && r.needsConfirm) {
-                          setConfirming({ id: c.id, name: c.name, count: r.recordCount ?? 0 });
-                        } else if (!r.ok) {
-                          setMsg(r.message ?? null);
-                        }
-                      })
-                    }
-                  />
                 </div>
               )}
             </li>
@@ -149,46 +132,6 @@ export function CategoryManager({
         </ul>
       )}
 
-      <p className="mt-3 text-[13px] text-[var(--ink-3)]">
-        보관하면 지난 기록은 유지되고, 새 기록의 선택지에서만 숨겨져요. 보관한 태그를 다시 꺼내는
-        화면은 아직 없어요.
-      </p>
-
-      <Dialog
-        open={confirming !== null}
-        onClose={() => setConfirming(null)}
-        title="이 태그를 보관할까요?"
-        subtitle={confirming ? `${confirming.name} · 기록 ${confirming.count}건` : undefined}
-        footer={
-          <>
-            <span className="flex-1" />
-            <button type="button" className={btn.ghost} onClick={() => setConfirming(null)}>
-              취소
-            </button>
-            {/* 확인하는 동작은 어느 창에서나 맨 오른쪽에 옅은 면으로 온다(ADR-027). */}
-            <button
-              type="button"
-              className={btn.soft}
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  if (!confirming) return;
-                  await deleteCategoryAction(confirming.id, true);
-                  setConfirming(null);
-                  setMsg(null);
-                })
-              }
-            >
-              보관
-            </button>
-          </>
-        }
-      >
-        <p className="text-[15px] leading-relaxed text-[var(--ink-2)]">
-          지난 기록이 어느 태그였는지는 그대로 유지돼요. 앞으로 새로 기록할 때의 선택지에서만
-          빠져요.
-        </p>
-      </Dialog>
     </section>
   );
 }

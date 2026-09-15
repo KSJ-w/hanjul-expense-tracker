@@ -16,7 +16,7 @@ export const DESTINATIONS = [
   { href: '/', label: '달력' },
   { href: '/dashboard', label: '통계' },
   { href: '/search', label: '내역' },
-  { href: '/settings', label: '설정' },
+  { href: '/settings', label: '태그' },
 ];
 
 function isActive(pathname: string, href: string): boolean {

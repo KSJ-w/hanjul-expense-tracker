@@ -207,18 +207,6 @@ function buildPrompt(input: InterpretInput): string {
 export const geminiProvider: InterpretProvider = {
   name: 'gemini',
   usesNetwork: true,
-  /*
-   * FR-ENTRY-16 — 여기 적힌 것이 설정 화면이 보여 주는 '나가는 항목'이다.
-   * 나가는 길이 둘(기록 입력·내역 검색)이 되었으므로 항목마다 **어느 길에서**
-   * 나가는지를 함께 적는다. 코드가 늘고 이 목록이 그대로면 안내와 실제가 어긋난다(§8).
-   */
-  outboundFields: [
-    { key: 'text', label: '적으신 문장', detail: '기록 입력창·내역 검색창에 적은 내용 그대로' },
-    { key: 'image', label: '첨부한 이미지', detail: '영수증·결제 내역 이미지 원본 (기록 입력에서만)' },
-    { key: 'categories', label: '태그 이름 목록', detail: '태그의 이름만. 기록 내용은 포함하지 않음' },
-    { key: 'today', label: '오늘 날짜', detail: '상대적인 날짜·기간 표현을 계산하기 위한 기준일' },
-  ],
-
   isAvailable: () => apiKey() !== undefined,
 
   async interpret(input: InterpretInput): Promise<InterpretOutcome> {

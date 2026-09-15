@@ -2,7 +2,6 @@ import type {
   InterpretInput,
   InterpretOutcome,
   InterpretProvider,
-  OutboundField,
   QueryInput,
   QueryOutcome,
 } from './types';
@@ -13,7 +12,6 @@ export type {
   InterpretInput,
   InterpretOutcome,
   InterpretedItem,
-  OutboundField,
   QueryInput,
   QueryOutcome,
   QueryPart,
@@ -36,15 +34,6 @@ export function activeProvider(): InterpretProvider {
 /** 마지막 수단(항상 기기 안에서 도는 것). 외부가 죽어도 이것은 산다. */
 export function fallbackProvider(): InterpretProvider {
   return heuristicProvider;
-}
-
-/**
- * FR-ENTRY-16 — 지금 설정에서 밖으로 나가는 항목.
- * 외부 수단을 쓰지 않는 상태면 빈 배열이다("나가는 것이 없음"을 그대로 보여준다).
- */
-export function currentOutboundFields(): OutboundField[] {
-  const p = activeProvider();
-  return p.usesNetwork ? p.outboundFields : [];
 }
 
 export function interpretationStatus(): {

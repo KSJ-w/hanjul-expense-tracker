@@ -11,9 +11,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { freshDb, cleanup, categoryIdByName, TODAY, type TestEnv } from './helpers';
 import { createRecord, queryRecords, totalsInRange, monthPresence } from '@/lib/repo/records';
-import { exportBundle, exportCsv } from '@/lib/transfer';
-import { currentOutboundFields } from '@/lib/interpret';
-import { geminiProvider } from '@/lib/interpret/gemini';
 import { IMAGE_ATTACH_NOTICE } from '@/lib/interpret/notices';
 
 let env: TestEnv;
@@ -56,8 +53,6 @@ describe('해석 경계 — 나가는 것', () => {
       queryRecords({ from: TODAY, to: TODAY }, env.db);
       totalsInRange(TODAY, TODAY, env.db);
       monthPresence('2026-09', env.db);
-      exportBundle({}, env.db);
-      exportCsv(env.db);
     } finally {
       globalThis.fetch = original;
     }
@@ -86,50 +81,6 @@ describe('해석 경계 — 나가는 것', () => {
     }
 
     expect(offenders).toEqual([]);
-  });
-
-  it('[TC-ENTRY-37] FR-ENTRY-16: 외부 수단을 쓰지 않으면 나가는 항목이 없다', () => {
-    const before = process.env.GEMINI_API_KEY;
-    delete process.env.GEMINI_API_KEY;
-    try {
-      expect(currentOutboundFields()).toEqual([]);
-    } finally {
-      if (before !== undefined) process.env.GEMINI_API_KEY = before;
-    }
-  });
-
-  it('[TC-ENTRY-38] FR-ENTRY-16: 외부 수단을 쓰면 나가는 항목 이름이 제시된다', () => {
-    const keys = geminiProvider.outboundFields.map((f) => f.key);
-    expect(keys).toContain('text');
-    expect(keys).toContain('image');
-    expect(keys).toContain('categories');
-    for (const f of geminiProvider.outboundFields) {
-      expect(f.label.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('[TC-ENTRY-40] FR-ENTRY-16: 나가는 항목 안내가 두 길(기록 입력·내역 검색)을 모두 말한다', () => {
-    /*
-     * 나가는 길이 하나 늘었는데(FR-VIEW-13) 안내가 그대로면 사용자가 보는 목록과
-     * 실제가 어긋난다 — 코드를 늘리기 전에 문서를 고치라는 §8 이 지키려는 것이
-     * 바로 이 어긋남이다. 여기서는 그 문구가 실제로 갱신됐는지를 값으로 본다.
-     */
-    const text = geminiProvider.outboundFields.find((f) => f.key === 'text');
-    expect(text).toBeDefined();
-    expect(text!.detail).toMatch(/검색/);
-
-    // 이미지는 기록 입력에서만 나간다 — 찾을 때는 나가지 않는다는 사실도 적혀 있어야 한다.
-    const image = geminiProvider.outboundFields.find((f) => f.key === 'image');
-    expect(image!.detail).toMatch(/기록 입력/);
-
-    /*
-     * 설정 화면의 문장도 함께 본다. 항목 목록만 맞고 그 위의 문장이 '조회에서는
-     * 나가지 않는다'고 말하면 사용자가 읽는 안내는 여전히 틀린 것이다 — 실제로
-     * 그 문장이 남아 있었다.
-     */
-    const settings = fs.readFileSync(path.join(process.cwd(), 'src/app/settings/page.tsx'), 'utf8');
-    expect(settings).not.toMatch(/조회·요약·백업에서는 나가지 않아요/);
-    expect(settings).toMatch(/내역을 찾을 때/);
   });
 
   it('[TC-ENTRY-39] FR-ENTRY-18: 이미지 첨부 안내에 전송 사실과 가림 권고가 함께 있다', () => {

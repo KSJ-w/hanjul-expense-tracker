@@ -8,13 +8,6 @@ import type { Category, Direction, RecordQuery } from '../domain/types';
  * test/boundary.test.ts 가 그 사실을 검사한다.
  */
 
-/** FR-ENTRY-16 — 사용자에게 보여줄 '나가는 항목'. 항목 이름 수준으로 고정한다(RFP R-03). */
-export interface OutboundField {
-  key: string;
-  label: string;
-  detail: string;
-}
-
 export interface InterpretInput {
   text?: string;
   image?: { base64: string; mime: string };
@@ -107,8 +100,6 @@ export interface InterpretProvider {
   readonly name: string;
   /** 이 수단이 기기 밖으로 나가는가. false 면 외부 전송이 없다. */
   readonly usesNetwork: boolean;
-  /** 이 수단이 밖으로 내보내는 항목. usesNetwork 가 false 면 빈 배열이다. */
-  readonly outboundFields: OutboundField[];
   isAvailable(): boolean;
   interpret(input: InterpretInput): Promise<InterpretOutcome>;
   /** 조회 문장을 조건으로 바꾼다(FR-VIEW-13). 기록을 만드는 것이 아니라 **찾는 조건**을 만든다. */

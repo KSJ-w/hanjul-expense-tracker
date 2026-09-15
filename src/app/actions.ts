@@ -21,9 +21,7 @@ import {
   queryRecords,
 } from '@/lib/repo/records';
 import { setBudget, clearBudget } from '@/lib/repo/budgets';
-import { addRecurring, removeRecurring, setRecurringActive } from '@/lib/repo/recurring';
 import { saveDataUrl } from '@/lib/repo/images';
-import { importBundle } from '@/lib/transfer';
 import { interpret, interpretQuery } from '@/lib/interpret';
 
 function refresh(): void {
@@ -278,51 +276,6 @@ export async function setBudgetAction(
 export async function clearBudgetAction(categoryId: string, periodKey: string): Promise<void> {
   clearBudget(categoryId, periodKey, getDb());
   refresh();
-}
-
-/* --------------------------------------------------------------- 반복 항목 */
-
-export async function addRecurringAction(input: {
-  name: string;
-  amount: number;
-  direction: Direction;
-  categoryId: string | null;
-  anchorDay: number;
-  note?: string;
-}): Promise<{ ok: boolean; message?: string }> {
-  const r = addRecurring(input, getDb());
-  refresh();
-  return r.ok ? { ok: true } : { ok: false, message: '값 확인 필요' };
-}
-
-export async function removeRecurringAction(id: string): Promise<void> {
-  removeRecurring(id, getDb());
-  refresh();
-}
-
-export async function toggleRecurringAction(id: string, active: boolean): Promise<void> {
-  setRecurringActive(id, active, getDb());
-  refresh();
-}
-
-/* ------------------------------------------------------------------ 반입 */
-
-export async function importBundleAction(
-  json: string,
-): Promise<{ ok: boolean; message: string }> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return { ok: false, message: '파일 읽기 실패' };
-  }
-  const r = importBundle(parsed, getDb());
-  refresh();
-  if (!r.ok) return { ok: false, message: `들여오기 실패 — ${r.detail}` };
-  return {
-    ok: true,
-    message: `들여오기 ${r.imported}건 · 건너뜀 ${r.skipped}건 · 이미지 ${r.imagesRestored}건`,
-  };
 }
 
 /* ------------------------------------------------------------ 내역 검색 */

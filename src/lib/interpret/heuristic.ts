@@ -24,7 +24,6 @@ import { lookupMerchantCategory } from '../repo/merchantRules';
 export const heuristicProvider: InterpretProvider = {
   name: 'heuristic-local',
   usesNetwork: false,
-  outboundFields: [],
   isAvailable: () => true,
 
   /** 조회 문장도 기기 안 규칙으로 읽는다(FR-VIEW-13). 밖으로 나가는 것이 없다. */

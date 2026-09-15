@@ -10,5 +10,5 @@ export const IMAGE_ATTACH_NOTICE =
 export const IMAGE_ATTACH_NOTICE_LOCAL =
   '외부 해석 미사용. 첨부 이미지는 기기 밖으로 나가지 않음.';
 
-/** FR-ENTRY-16 — 나가는 것이 없을 때 보여 줄 문구. */
+/** 나가는 것이 없을 때 보여 줄 문구. */
 export const NO_OUTBOUND_NOTICE = '밖으로 나가는 항목 없음.';

@@ -23,7 +23,7 @@ function toCategory(r: Row): Category {
   };
 }
 
-/** 선택지에 오르는 분류(FR-CAT-03: 보관된 것은 빠진다). */
+/** 선택지에 오르는 분류. 보관된 것은 빠진다. */
 export function listCategories(direction?: Direction, db: DatabaseSync = getDb()): Category[] {
   const rows = direction
     ? (db
@@ -119,7 +119,7 @@ export type DeleteCategoryResult =
   | { ok: false; reason: 'has-records'; recordCount: number };
 
 /**
- * FR-CAT-03 / FR-CAT-08.
+ * 보관 처리. 화면은 ADR-046 으로 내려갔고 이 함수만 남아 있다.
  * 귀속된 기록이 있으면 confirmed 없이는 수행하지 않는다.
  * 수행하더라도 행을 지우지 않고 보관 처리한다 — 지우면 NFR-CAT-01 이 깨진다.
  */
