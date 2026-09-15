@@ -137,16 +137,8 @@ export function SearchChat() {
 
   return (
     <>
+      {/* 대화 — 처음에는 아무것도 없다. 빈 바탕이 곧 '아직 묻지 않았다'는 뜻이다. */}
       <div className="flex flex-col gap-8">
-        {/*
-         * 아직 아무것도 묻지 않았을 때의 한 줄 — ADR-045.
-         * 화면을 해설하는 말이 아니라 **부르는 말**이라 ADR-031 의 금지에 걸리지 않는다.
-         * 대화가 시작되면 사라진다. 상시로 붙는 문장이 아니어야 한다는 것이 그 규칙의 요점이다.
-         */}
-        {turns.length === 0 && pending === null ? (
-          <p className="text-[17px] text-[var(--ink-2)]">어떤 기록을 찾아 드릴까요?</p>
-        ) : null}
-
         {turns.map((t, i) => (
           <div key={i} className="flex flex-col gap-3">
             <Said>{t.said}</Said>
